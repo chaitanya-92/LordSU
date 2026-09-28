@@ -18,7 +18,7 @@ RUN mkdir -p $ANDROID_SDK_ROOT/cmdline-tools \
     && sdkmanager --install "platform-tools" "platforms;android-37.0" "build-tools;37.0.0" "ndk;29.0.14206865"
 
 COPY worker/package.json /opt/lordsu-worker/package.json
-RUN npm --prefix /opt/lordsu-worker install --omit=dev
+RUN npm --prefix /opt/lordsu-worker install --omit=dev     && mkdir -p /app/node_modules     && cp -a /opt/lordsu-worker/node_modules/. /app/node_modules/
 
 ENV NODE_PATH=/opt/lordsu-worker/node_modules
 
