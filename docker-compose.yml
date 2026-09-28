@@ -32,12 +32,14 @@ services:
       REDIS_URL: redis://redis:6379
       ARTIFACT_DIR: /storage
       BUILDER_SCRIPT: /app/builder/src/build.js
+      GIT_CACHE_DIR: /build-cache
       WORKER_CONCURRENCY: 1
     volumes:
       - ./:/app:ro
       - build-artifacts:/storage
       - /tmp:/tmp
       - gradle-cache:/root/.gradle
+      - build-cache:/build-cache
     depends_on:
       - redis
 
@@ -58,3 +60,4 @@ volumes:
   redis-data:
   build-artifacts:
   gradle-cache:
+  build-cache:
