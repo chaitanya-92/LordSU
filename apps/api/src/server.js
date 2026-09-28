@@ -16,6 +16,15 @@ const storage=process.env.ARTIFACT_DIR||"/storage";
 
 app.use(cors());app.use(express.json());
 
+function apiError(error,res){
+ if(error instanceof multer.MulterError){
+  if(error.code==="LIMIT_FILE_SIZE") return res.status(413).json({error:"Icon is too large. Maximum size is 10 MB."});
+  return res.status(400).json({error:`Upload error: ${error.message}`});
+ }
+ console.error(error);
+ return res.status(500).json({error:"The build service encountered an unexpected error."});
+}
+
 const schema=z.object({
  name:z.string().trim().min(1).max(64),
  packageName:z.string().regex(/^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$/).max(128),
@@ -36,7 +45,7 @@ app.post("/api/builds",upload.single("icon"),async(req,res)=>{
  await saveJob(job);
  await queue.add("build",{id,config:parsed.data,iconPath:job.iconPath},{jobId:id,removeOnComplete:100,removeOnFail:100});
  res.status(202).json({id,status:"queued"});
-});
+}).catch(error=>apiError(error,res));
 
 app.get("/api/builds/:id",async(req,res)=>{
  const job=await readJob(req.params.id);
@@ -52,4 +61,5 @@ app.get("/api/builds/:id/download",async(req,res)=>{
  res.download(file,job.fileName||"manager.apk");
 });
 
+app.use((error,_req,res,_next)=>apiError(error,res));
 app.listen(port,()=>console.log(`LordSU API listening on :${port}`));
