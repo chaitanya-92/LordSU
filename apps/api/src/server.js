@@ -38,14 +38,18 @@ async function readJob(id){const value=await redis.get(`lordsu:build:${id}`);ret
 app.get("/health",(_q,s)=>s.json({ok:true,service:"lordsu-api"}));
 
 app.post("/api/builds",upload.single("icon"),async(req,res)=>{
- const parsed=schema.safeParse(req.body);
- if(!parsed.success)return res.status(400).json({error:parsed.error.issues[0].message});
- const id=crypto.randomUUID();
- const job={id,status:"queued",createdAt:new Date().toISOString(),config:parsed.data,iconPath:req.file?.path||null};
- await saveJob(job);
- await queue.add("build",{id,config:parsed.data,iconPath:job.iconPath},{jobId:id,removeOnComplete:100,removeOnFail:100});
- res.status(202).json({id,status:"queued"});
-}).catch(error=>apiError(error,res));
+ try{
+  const parsed=schema.safeParse(req.body);
+  if(!parsed.success)return res.status(400).json({error:parsed.error.issues[0].message});
+  const id=crypto.randomUUID();
+  const job={id,status:"queued",createdAt:new Date().toISOString(),config:parsed.data,iconPath:req.file?.path||null};
+  await saveJob(job);
+  await queue.add("build",{id,config:parsed.data,iconPath:job.iconPath},{jobId:id,removeOnComplete:100,removeOnFail:100});
+  res.status(202).json({id,status:"queued"});
+ }catch(error){
+  apiError(error,res);
+ }
+});
 
 app.get("/api/builds/:id",async(req,res)=>{
  const job=await readJob(req.params.id);
