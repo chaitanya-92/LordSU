@@ -2,7 +2,7 @@ FROM ubuntu:24.04
 ENV DEBIAN_FRONTEND=noninteractive
 ENV ANDROID_HOME=/opt/android-sdk
 ENV ANDROID_SDK_ROOT=/opt/android-sdk
-ENV PATH=/opt/android-sdk/cmdline-tools/latest/bin:/opt/android-sdk/platform-tools:/opt/android-sdk/build-tools/37.0.0:/usr/local/bin:$PATH
+ENV PATH=/opt/gradle/current/bin:/opt/android-sdk/cmdline-tools/latest/bin:/opt/android-sdk/platform-tools:/opt/android-sdk/build-tools/37.0.0:/usr/local/bin:$PATH
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates curl git unzip zip python3 python3-pil nodejs npm openjdk-21-jdk \
@@ -18,8 +18,10 @@ RUN mkdir -p /opt/gradle \
          sleep 2; \
        done \
     && test -s /tmp/gradle.zip \
+    && unzip -tq /tmp/gradle.zip \
     && unzip -q /tmp/gradle.zip -d /opt/gradle \
-    && ln -s /opt/gradle/gradle-${GRADLE_VERSION}/bin/gradle /opt/gradle/bin \
+    && ln -s /opt/gradle/gradle-${GRADLE_VERSION} /opt/gradle/current \
+    && /opt/gradle/current/bin/gradle --version \
     && rm -f /tmp/gradle.zip
 
 RUN mkdir -p $ANDROID_SDK_ROOT/cmdline-tools \
