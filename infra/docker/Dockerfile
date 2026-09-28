@@ -15,7 +15,7 @@ RUN mkdir -p $ANDROID_SDK_ROOT/cmdline-tools \
     && mv /tmp/tools/cmdline-tools $ANDROID_SDK_ROOT/cmdline-tools/latest \
     && rm -rf /tmp/tools /tmp/tools.zip \
     && yes | sdkmanager --licenses >/dev/null || true \
-    && sdkmanager "platform-tools" "platforms;android-37" "build-tools;37.0.0" "ndk;29.0.14206865"
+    && sdkmanager --install "platform-tools" "platforms;android-37.0" "build-tools;37.0.0" "ndk;29.0.14206865"
 
 WORKDIR /app
 CMD ["sleep","infinity"]
