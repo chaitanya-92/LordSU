@@ -18,6 +18,7 @@ const work=await fs.mkdtemp(path.join(os.tmpdir(),"lordsu-"));
 const source=path.join(work,"source");
 const out=path.join(work,"out");
 const progressFile=process.env.PROGRESS_FILE||path.join(work,"progress.json");
+const gitCache=process.env.GIT_CACHE_DIR||null;
 await fs.mkdir(out,{recursive:true});
 
 async function progress(stage,percent,message){
@@ -32,6 +33,24 @@ function run(command,args,cwd=work,env={}){
 }
 
 function safeName(v){return v.replace(/[^a-zA-Z0-9._-]+/g,"-").replace(/^-+|-+$/g,"")||"manager"}
+
+async function prepareSource(backendKey,backend){
+ if(!gitCache){
+  await prepareSource(cfg.backend,backend);
+  return;
+ }
+ const cacheRoot=path.join(gitCache,"git");
+ const mirror=path.join(cacheRoot,`${backendKey}.git`);
+ await fs.mkdir(cacheRoot,{recursive:true});
+ try{
+  await fs.access(path.join(mirror,"HEAD"));
+  await run("git",["-C",mirror,"fetch","--depth","1","origin",backend.ref]);
+ }catch{
+  await fs.rm(mirror,{recursive:true,force:true});
+  await run("git",["clone","--mirror",backend.url,mirror]);
+ }
+ await run("git",["clone","--shared","--depth","1","--branch",backend.ref,mirror,source]);
+}
 
 async function replaceIcons(iconPath,manager){
  if(!iconPath)return;
@@ -83,7 +102,7 @@ try{
    `-PKEY_ALIAS=${alias}`,
    `-PKEY_PASSWORD=${password}`
  ];
- await run(gradle,args,manager,{GRADLE_OPTS:"-Dorg.gradle.daemon=false -Dorg.gradle.parallel=false -Dorg.gradle.jvmargs=-Xmx4g"});
+ await run(gradle,[...args,"--build-cache","--configuration-cache","--parallel","--max-workers=4"],manager,{GRADLE_OPTS:"-Dorg.gradle.daemon=true -Dorg.gradle.parallel=true -Dorg.gradle.jvmargs=-Xmx4g"});
 
  await progress("package",82,"Collecting and packaging the generated APK");
  const apkRoot=path.join(manager,"app","build","outputs","apk");
