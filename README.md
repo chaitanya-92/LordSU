@@ -1,22 +1,20 @@
 # LordSU
 
-On-demand Android Root Manager Builder.
+On-demand Android root manager builder.
 
-## Project
-LordSU is a web-based builder that generates independently branded Android root-manager APKs from approved KernelSU / KernelSU Next source revisions.
+LordSU lets a user configure a branded manager in the browser and receive a freshly built APK from an approved KernelSU or KernelSU Next source revision.
 
-## MVP
-- Web builder form
-- KernelSU / KernelSU Next backend selection
-- Build job API
-- Queue-ready architecture
-- Isolated Docker build worker
-- Temporary APK delivery
-- Cryptographic verification
-- Per-manager build configuration
+## Upstream backends
 
-## Safety and integrity
-Builds are restricted to approved source revisions and predefined build parameters. User input is configuration only; arbitrary source code or shell commands are not accepted.
+- KernelSU — https://github.com/tiann/KernelSU
+- KernelSU Next — https://github.com/KernelSU-Next/KernelSU-Next
 
-## Status
-MVP foundation.
+## MVP pipeline
+
+Website → API → queue → isolated builder → branding/configuration → Android build → signing → verification → temporary download → cleanup.
+
+The builder accepts configuration only. It does not expose arbitrary shell commands or arbitrary source execution.
+
+## Development
+
+The first milestone is the builder foundation and UI. The real Android build worker is added after the manager/backend integration is defined.

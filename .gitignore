@@ -8,7 +8,7 @@ build/
 *.keystore
 *.jks
 *.pem
-*.pkcs8
-/storage/*
-!/storage/.gitkeep
-/tmp/*
+*.p12
+storage/*
+!storage/.gitkeep
+tmp/*

@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "backends": {
+    "kernelsu": {
+      "id": "kernelsu",
+      "name": "KernelSU",
+      "upstream": "https://github.com/tiann/KernelSU.git",
+      "defaultRef": "main",
+      "allowedRefs": []
+    },
+    "kernelsu-next": {
+      "id": "kernelsu-next",
+      "name": "KernelSU Next",
+      "upstream": "https://github.com/KernelSU-Next/KernelSU-Next.git",
+      "defaultRef": "dev",
+      "allowedRefs": []
+    }
+  }
+}
