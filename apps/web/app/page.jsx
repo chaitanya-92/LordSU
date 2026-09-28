@@ -1,5 +1,5 @@
 "use client";
-import {useState} from "react";
+import {useEffect,useState} from "react";
 import {Check, ChevronRight, Upload, Loader2} from "lucide-react";
 import {Button} from "../components/ui/button";
 import {Input} from "../components/ui/input";
@@ -15,16 +15,35 @@ const backends=[
 export default function Home(){
  const [form,setForm]=useState({name:"",packageName:"",backend:"kernelsu",version:"stable",icon:null});
  const [busy,setBusy]=useState(false),[job,setJob]=useState(null);
+ const [error,setError]=useState("");
  const selected=backends.find(x=>x.id===form.backend);
+ useEffect(()=>{
+  if(!job?.id || ["ready","failed"].includes(job.status)) return;
+  let cancelled=false;
+  const poll=async()=>{
+   try{
+    const r=await fetch(API+"/api/builds/"+job.id,{cache:"no-store"});
+    const d=await r.json();
+    if(!r.ok) throw new Error(d.error||"Unable to read build status");
+    if(!cancelled)setJob(d);
+   }catch(e){if(!cancelled)setError(e.message)}
+  };
+  poll();
+  const timer=setInterval(poll,2500);
+  return()=>{cancelled=true;clearInterval(timer)};
+ },[job?.id,job?.status]);
+
  async function build(e){
-  e.preventDefault();setBusy(true);setJob({status:"queued"});
+  e.preventDefault();setBusy(true);setError("");setJob({status:"queued"});
   try{
    const fd=new FormData();
    Object.entries(form).forEach(([k,v])=>{if(v!==null)fd.append(k,v)});
    const r=await fetch(API+"/api/builds",{method:"POST",body:fd});
-   const d=await r.json();if(!r.ok)throw new Error(d.error||"Build failed");
+   const d=await r.json();
+   if(!r.ok)throw new Error(d.error||"Build failed");
    setJob(d);
-  }catch(e){setJob({status:"failed",error:e.message})}finally{setBusy(false)}
+  }catch(e){setJob({status:"failed",error:e.message});setError(e.message)}
+  finally{setBusy(false)}
  }
  return <main className="min-h-screen">
   <nav className="mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
@@ -45,7 +64,13 @@ export default function Home(){
      <div><Label>Root backend</Label><div className="mt-2 grid gap-2">{backends.map(b=><button type="button" key={b.id} onClick={()=>setForm({...form,backend:b.id})} className={`rounded-xl border p-4 text-left ${form.backend===b.id?"border-foreground bg-zinc-50":"hover:bg-zinc-50"}`}><div className="flex items-center justify-between font-medium">{b.name}{form.backend===b.id&&<Check size={17}/>}</div><p className="mt-1 text-xs text-zinc-500">{b.desc} · {b.branch}</p></button>)}</div></div>
      <Button className="w-full" size="lg" disabled={busy}>{busy?<><Loader2 className="mr-2 animate-spin" size={17}/>Creating build…</>:<>Build manager <ChevronRight className="ml-2" size={17}/></>}</Button>
     </form>
-    {job&&<div className="mt-5 rounded-xl bg-zinc-50 p-4 text-sm"><b>{job.status==="failed"?"Build failed":job.status==="ready"?"Build ready":"Build queued"}</b>{job.id&&<p className="mt-1 text-xs text-zinc-500">Build ID: {job.id}</p>}{job.downloadUrl&&<a className="mt-3 inline-block font-medium underline" href={job.downloadUrl}>Download APK</a>}{job.error&&<p className="mt-1 text-red-600">{job.error}</p>}</div>}
+    {job&&<div className="mt-5 rounded-xl bg-zinc-50 p-4 text-sm">
+      <b>{job.status==="failed"?"Build failed":job.status==="ready"?"Build ready":job.status==="running"?"Building APK…":"Build queued"}</b>
+      {job.id&&<p className="mt-1 text-xs text-zinc-500">Build ID: {job.id}</p>}
+      {job.status==="ready"&&job.downloadUrl&&<a className="mt-4 inline-flex items-center justify-center rounded-lg bg-black px-4 py-2 font-medium text-white no-underline" href={API+job.downloadUrl} download>Download APK</a>}
+      {job.status==="running"&&<p className="mt-2 text-xs text-zinc-500">The worker is compiling, signing and verifying your APK. This may take several minutes.</p>}
+      {(job.error||error)&&<p className="mt-1 text-red-600">{job.error||error}</p>}
+    </div>}
    </CardContent></Card>
   </div>
  </main>
