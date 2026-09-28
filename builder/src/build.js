@@ -102,7 +102,7 @@ try{
    `-PKEY_ALIAS=${alias}`,
    `-PKEY_PASSWORD=${password}`
  ];
- await run(gradle,[...args,"--build-cache","--parallel","--max-workers=4"],manager,{GRADLE_OPTS:"-Dorg.gradle.daemon=true -Dorg.gradle.parallel=true -Dorg.gradle.jvmargs=-Xmx4g"});
+ await run(gradle,[...args,"--build-cache","--parallel","--max-workers=4"],manager,{GRADLE_OPTS:"-Dorg.gradle.daemon=true -Dorg.gradle.parallel=true -Dorg.gradle.jvmargs=-Xmx4g -Dorg.gradle.internal.http.connectionTimeout=60000 -Dorg.gradle.internal.http.socketTimeout=120000"});
 
  await progress("package",82,"Collecting and packaging the generated APK");
  const apkRoot=path.join(manager,"app","build","outputs","apk");
