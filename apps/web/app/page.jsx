@@ -11,6 +11,10 @@ const backends=[
  {id:"kernelsu",name:"KernelSU",desc:"Kernel-based root backend",branch:"main"},
  {id:"kernelsu-next",name:"KernelSU Next",desc:"KernelSU-compatible backend",branch:"dev"}
 ];
+const packageSuggestion=(name)=>{
+ const slug=name.toLowerCase().trim().replace(/[^a-z0-9]+/g,"").replace(/^[^a-z]+/,"")||"manager";
+ return `com.${slug}.manager`;
+};
 const steps=[
  ["preparing","Preparing","Create isolated workspace"],
  ["source","Source","Fetch approved upstream"],
@@ -26,6 +30,7 @@ const steps=[
 export default function Home(){
  const [form,setForm]=useState({name:"",packageName:"",backend:"kernelsu",version:"stable",icon:null});
  const [busy,setBusy]=useState(false),[job,setJob]=useState(null),[error,setError]=useState("");
+ const [packageEdited,setPackageEdited]=useState(false);
  const [startedAt,setStartedAt]=useState(null),[now,setNow]=useState(Date.now());
  useEffect(()=>{if(!job?.id||["ready","failed"].includes(job.status))return;const poll=async()=>{try{const r=await fetch(API+"/api/builds/"+job.id,{cache:"no-store"});const d=await r.json();if(!r.ok)throw new Error(d.error||"Unable to read build status");setJob(d);if(d.startedAt&&!startedAt)setStartedAt(new Date(d.startedAt).getTime())}catch(e){setError(e.message)}};poll();const t=setInterval(poll,2000);return()=>clearInterval(t)},[job?.id,job?.status]);
  useEffect(()=>{if(!job?.id||["ready","failed"].includes(job.status))return;const t=setInterval(()=>setNow(Date.now()),1000);return()=>clearInterval(t)},[job?.id,job?.status]);
@@ -60,8 +65,8 @@ export default function Home(){
     <CardHeader><h2 className="text-xl font-semibold">Create manager</h2><p className="mt-1 text-sm text-zinc-500">Your build stays isolated from other jobs.</p></CardHeader>
     <CardContent>
      <form onSubmit={build} className="space-y-5">
-      <div><Label>Manager name</Label><Input className="mt-2 h-11" value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="MyRoot" required/></div>
-      <div><Label>Package name</Label><Input className="mt-2 h-11 font-mono text-sm" value={form.packageName} onChange={e=>setForm({...form,packageName:e.target.value.toLowerCase().replace(/[^a-z0-9_.]/g,"")})} placeholder="com.example.myroot" required/>
+      <div><Label>Manager name</Label><Input className="mt-2 h-11" value={form.name} onChange={e=>{const name=e.target.value;setForm(prev=>({...prev,name,...(!packageEdited?{packageName:packageSuggestion(name)}:{})}))}} placeholder="MyRoot" required/></div>
+      <div><Label>Package name</Label><Input className="mt-2 h-11 font-mono text-sm" value={form.packageName} onChange={e=>{setPackageEdited(true);setForm({...form,packageName:e.target.value.toLowerCase().replace(/[^a-z0-9_.]/g,"")})}} placeholder="com.example.myroot" required/>
       <p className="mt-1.5 text-xs text-zinc-500">Lowercase letters, numbers, underscores and dots only.</p></div>
       <div><Label>Icon</Label><label className="mt-2 flex cursor-pointer items-center gap-3 rounded-xl border border-dashed p-4 text-sm text-zinc-500 transition hover:border-zinc-400 hover:bg-zinc-50"><Upload size={18}/><span className="truncate">{form.icon?form.icon.name:"Upload PNG or WebP"}</span><input className="hidden" type="file" accept="image/png,image/webp" onChange={e=>setForm({...form,icon:e.target.files?.[0]||null})}/></label></div>
       <div><Label>Root backend</Label><div className="mt-2 grid gap-2">{backends.map(b=><button type="button" key={b.id} onClick={()=>setForm({...form,backend:b.id})} className={`rounded-xl border p-4 text-left transition-all ${form.backend===b.id?"border-zinc-950 bg-zinc-50 shadow-sm":"border-zinc-200 hover:-translate-y-0.5 hover:border-zinc-400 hover:shadow-sm"}`}><div className="flex items-center justify-between font-medium">{b.name}{form.backend===b.id&&<Check size={17}/>}</div><p className="mt-1 text-xs text-zinc-500">{b.desc} · {b.branch}</p></button>)}</div></div>
