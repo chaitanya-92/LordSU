@@ -19,7 +19,6 @@ services:
       - ./:/app
       - build-artifacts:/storage
       - /tmp:/tmp
-      - gradle-cache:/root/.gradle
     depends_on:
       - redis
 
@@ -38,6 +37,7 @@ services:
       - ./:/app:ro
       - build-artifacts:/storage
       - /tmp:/tmp
+      - gradle-cache:/root/.gradle
     depends_on:
       - redis
 
