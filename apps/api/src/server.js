@@ -8,7 +8,7 @@ import {z} from "zod";
 import {Queue} from "bullmq";
 import IORedis from "ioredis";
 
-const app=express(),upload=multer({dest:"/tmp/lordsu-uploads",limits:{fileSize:2*1024*1024}});
+const app=express(),upload=multer({dest:"/tmp/lordsu-uploads",limits:{fileSize:10*1024*1024}});
 const port=Number(process.env.PORT||4000);
 const redis=new IORedis(process.env.REDIS_URL||"redis://127.0.0.1:6379",{maxRetriesPerRequest:null});
 const queue=new Queue("lordsu-builds",{connection:redis});
