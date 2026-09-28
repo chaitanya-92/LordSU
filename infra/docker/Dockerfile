@@ -17,5 +17,10 @@ RUN mkdir -p $ANDROID_SDK_ROOT/cmdline-tools \
     && yes | sdkmanager --licenses >/dev/null || true \
     && sdkmanager --install "platform-tools" "platforms;android-37.0" "build-tools;37.0.0" "ndk;29.0.14206865"
 
+COPY worker/package.json /opt/lordsu-worker/package.json
+RUN npm --prefix /opt/lordsu-worker install --omit=dev
+
+ENV NODE_PATH=/opt/lordsu-worker/node_modules
+
 WORKDIR /app
 CMD ["sleep","infinity"]

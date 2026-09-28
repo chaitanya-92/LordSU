@@ -8,7 +8,7 @@ services:
   api:
     image: node:22-bookworm
     working_dir: /app
-    command: sh -c "npm install && npm --prefix apps/api run start"
+    command: sh -c "npm --prefix apps/api install --omit=dev && npm --prefix apps/api run start"
     environment:
       REDIS_URL: redis://redis:6379
       ARTIFACT_DIR: /storage
@@ -24,10 +24,10 @@ services:
 
   worker:
     build:
-      context: ./infra/docker
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: infra/docker/Dockerfile
     working_dir: /app
-    command: sh -c "npm --prefix worker install && node worker/src/worker.js"
+    command: node /app/worker/src/worker.js
     environment:
       REDIS_URL: redis://redis:6379
       ARTIFACT_DIR: /storage
