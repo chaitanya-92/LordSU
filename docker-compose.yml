@@ -19,6 +19,7 @@ services:
       - ./:/app
       - build-artifacts:/storage
       - /tmp:/tmp
+      - gradle-cache:/root/.gradle
     depends_on:
       - redis
 
@@ -56,3 +57,4 @@ services:
 volumes:
   redis-data:
   build-artifacts:
+  gradle-cache:

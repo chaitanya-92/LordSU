@@ -12,18 +12,22 @@ const BACKENDS={
 const cfg=JSON.parse(await fs.readFile(process.argv[2],"utf8"));
 if(!BACKENDS[cfg.backend]) throw new Error("Unsupported backend");
 if(!cfg.name?.trim()) throw new Error("Manager name is required");
-if(!/^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$/.test(cfg.packageName)) throw new Error("Invalid package name");
+if(!/^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$/.test(cfg.packageName)) throw new Error("Invalid package name");
 
 const work=await fs.mkdtemp(path.join(os.tmpdir(),"lordsu-"));
 const source=path.join(work,"source");
 const out=path.join(work,"out");
+const progressFile=process.env.PROGRESS_FILE||path.join(work,"progress.json");
 await fs.mkdir(out,{recursive:true});
+
+async function progress(stage,percent,message){
+ await fs.writeFile(progressFile,JSON.stringify({stage,percent,message,updatedAt:new Date().toISOString()}));
+}
 
 function run(command,args,cwd=work,env={}){
  return new Promise((resolve,reject)=>{
   const child=spawn(command,args,{cwd,env:{...process.env,...env},stdio:"inherit"});
-  child.on("error",reject);
-  child.on("close",code=>code===0?resolve():reject(new Error(`${command} exited with code ${code}`)));
+  child.on("error",reject);child.on("close",code=>code===0?resolve():reject(new Error(`${command} exited with code ${code}`)));
  });
 }
 
@@ -47,15 +51,19 @@ async function replaceIcons(iconPath,manager){
 }
 
 try{
+ await progress("preparing",5,"Preparing isolated build workspace");
  const backend=BACKENDS[cfg.backend];
+ await progress("source",15,`Fetching ${cfg.backend === "kernelsu" ? "KernelSU" : "KernelSU Next"} source`);
  await run("git",["clone","--depth","1","--branch",backend.ref,backend.url,source]);
 
  const manager=path.join(source,"manager");
  const gradle=path.join(manager,process.platform==="win32"?"gradlew.bat":"gradlew");
  await run("chmod",["+x",gradle]);
 
+ await progress("branding",30,"Applying manager name, package and icon");
  if(cfg.iconPath) await replaceIcons(cfg.iconPath,manager);
 
+ await progress("signing-setup",38,"Generating isolated release signing identity");
  const keystore=path.join(work,"release.keystore");
  const password=crypto.randomBytes(24).toString("base64url");
  const alias="lordsu";
@@ -65,6 +73,7 @@ try{
   "-validity","10000","-dname","CN=LordSU Build"
  ]);
 
+ await progress("compile",42,"Compiling Android manager with Gradle");
  const args=[
    "assembleRelease",
    `-PKSU_NAME=${cfg.name}`,
@@ -76,6 +85,7 @@ try{
  ];
  await run(gradle,args,manager,{GRADLE_OPTS:"-Dorg.gradle.daemon=false -Dorg.gradle.parallel=false -Dorg.gradle.jvmargs=-Xmx4g"});
 
+ await progress("package",82,"Collecting and packaging the generated APK");
  const apkRoot=path.join(manager,"app","build","outputs","apk");
  const found=[];
  async function walk(dir){
@@ -91,17 +101,21 @@ try{
  const unsigned=path.join(out,"unsigned.apk");
  const aligned=path.join(out,"aligned.apk");
  const destination=path.join(out,`${safeName(cfg.name)}.apk`);
-
  const zipalign=process.env.ZIPALIGN||"zipalign";
  const apksigner=process.env.APKSIGNER||"apksigner";
+
+ await progress("align",88,"Optimizing APK alignment");
  await fs.copyFile(apk,unsigned);
  await run(zipalign,["-f","4",unsigned,aligned]);
+
+ await progress("sign",93,"Signing APK");
  await run(apksigner,["sign","--ks",keystore,"--ks-pass",`pass:${password}`,"--key-pass",`pass:${password}`,"--ks-key-alias",alias,"--out",destination,aligned]);
 
+ await progress("verify",97,"Verifying APK signature");
  const data=await fs.readFile(destination);
  await run(apksigner,["verify","--verbose",destination]);
-
  const sha256=crypto.createHash("sha256").update(data).digest("hex");
+ await progress("ready",100,"APK is ready to download");
  console.log(JSON.stringify({status:"ready",apk:destination,sha256,size:data.length}));
 }finally{
  await fs.rm(work,{recursive:true,force:true}).catch(()=>{});
