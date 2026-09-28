@@ -11,14 +11,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 ARG CMDLINE_TOOLS_URL=https://dl.google.com/android/repository/commandlinetools-linux-15859902_latest.zip
 ARG GRADLE_VERSION=9.7.1
 RUN mkdir -p /opt/gradle \
-    && for attempt in 1 2 3 4; do \
+    && success=0; \
+       for attempt in 1 2 3 4; do \
          rm -f /tmp/gradle.zip; \
-         if curl -fL --retry 3 --retry-delay 2 --connect-timeout 20 --max-time 600 "https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip" -o /tmp/gradle.zip; then break; fi; \
-         echo "Gradle distribution download failed on attempt $attempt; retrying..." >&2; \
+         if curl -fL --retry 3 --retry-delay 2 --connect-timeout 20 --max-time 600 "https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip" -o /tmp/gradle.zip \
+            && test -s /tmp/gradle.zip \
+            && unzip -tq /tmp/gradle.zip; then \
+           success=1; break; \
+         fi; \
+         echo "Gradle distribution download/archive validation failed on attempt $attempt; retrying..." >&2; \
          sleep 2; \
-       done \
-    && test -s /tmp/gradle.zip \
-    && unzip -tq /tmp/gradle.zip \
+       done; \
+       test "$success" -eq 1 \
     && unzip -q /tmp/gradle.zip -d /opt/gradle \
     && ln -s /opt/gradle/gradle-${GRADLE_VERSION} /opt/gradle/current \
     && /opt/gradle/current/bin/gradle --version \
