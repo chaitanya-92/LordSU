@@ -36,18 +36,18 @@ function safeName(v){return v.replace(/[^a-zA-Z0-9._-]+/g,"-").replace(/^-+|-+$/
 
 async function prepareSource(backendKey,backend){
  if(!gitCache){
-  await prepareSource(cfg.backend,backend);
+  await run("git",["clone","--depth","1","--branch",backend.ref,backend.url,source]);
   return;
  }
  const cacheRoot=path.join(gitCache,"git");
- const mirror=path.join(cacheRoot,`${backendKey}.git`);
+ const mirror=path.join(cacheRoot,\`${backendKey}.git\`);
  await fs.mkdir(cacheRoot,{recursive:true});
  try{
   await fs.access(path.join(mirror,"HEAD"));
   await run("git",["-C",mirror,"fetch","--depth","1","origin",backend.ref]);
  }catch{
   await fs.rm(mirror,{recursive:true,force:true});
-  await run("git",["clone","--mirror",backend.url,mirror]);
+  await run("git",["clone","--bare","--depth","1","--branch",backend.ref,backend.url,mirror]);
  }
  await run("git",["clone","--shared","--depth","1","--branch",backend.ref,mirror,source]);
 }
@@ -73,7 +73,7 @@ try{
  await progress("preparing",5,"Preparing isolated build workspace");
  const backend=BACKENDS[cfg.backend];
  await progress("source",15,`Fetching ${cfg.backend === "kernelsu" ? "KernelSU" : "KernelSU Next"} source`);
- await run("git",["clone","--depth","1","--branch",backend.ref,backend.url,source]);
+ await prepareSource(cfg.backend,backend);
 
  const manager=path.join(source,"manager");
  const gradle=path.join(manager,process.platform==="win32"?"gradlew.bat":"gradlew");
