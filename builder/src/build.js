@@ -22,8 +22,27 @@ function run(command,args,cwd=work,env={}){
  return new Promise((resolve,reject)=>{
   const child=spawn(command,args,{cwd,env:{...process.env,...env},stdio:"inherit"});
   child.on("error",reject);
-  child.on("close",code=>code===0?resolve():reject(new Error(`${command} exited with ${code}`)));
+  child.on("close",code=>code===0?resolve():reject(new Error(`${command} exited with code ${code}`)));
  });
+}
+
+function safeName(v){return v.replace(/[^a-zA-Z0-9._-]+/g,"-").replace(/^-+|-+$/g,"")||"manager"}
+
+async function replaceIcons(iconPath,manager){
+ if(!iconPath)return;
+ const script=[
+  "from PIL import Image",
+  "import sys, pathlib",
+  "src=pathlib.Path(sys.argv[1]); root=pathlib.Path(sys.argv[2])",
+  "im=Image.open(src).convert('RGBA')",
+  "side=max(im.size); canvas=Image.new('RGBA',(side,side),(0,0,0,0)); im.thumbnail((side,side),Image.Resampling.LANCZOS); canvas.alpha_composite(im,((side-im.width)//2,(side-im.height)//2))",
+  "sizes={'mdpi':48,'hdpi':72,'xhdpi':96,'xxhdpi':144,'xxxhdpi':192}",
+  "for d,s in sizes.items():",
+  " p=root/'app'/'src'/'main'/'res'/f'mipmap-{d}'",
+  " p.mkdir(parents=True,exist_ok=True)",
+  " for n in ('ic_launcher.png','ic_launcher_round.png','ic_launcher_foreground.png'): canvas.resize((s,s),Image.Resampling.LANCZOS).save(p/n,optimize=True)"
+ ].join("\n");
+ await run("python3",["-c",script,iconPath,manager]);
 }
 
 try{
@@ -34,13 +53,26 @@ try{
  const gradle=path.join(manager,process.platform==="win32"?"gradlew.bat":"gradlew");
  await run("chmod",["+x",gradle]);
 
+ if(cfg.iconPath) await replaceIcons(cfg.iconPath,manager);
+
+ const keystore=path.join(work,"release.keystore");
+ const password=crypto.randomBytes(24).toString("base64url");
+ const alias="lordsu";
+ await run("keytool",[
+  "-genkeypair","-v","-keystore",keystore,"-storepass",password,
+  "-keypass",password,"-alias",alias,"-keyalg","RSA","-keysize","3072",
+  "-validity","10000","-dname","CN=LordSU Build"
+ ]);
+
  const args=[
    "assembleRelease",
    `-PKSU_NAME=${cfg.name}`,
-   `-PKSU_PACKAGE_NAME=${cfg.packageName}`
+   `-PKSU_PACKAGE_NAME=${cfg.packageName}`,
+   `-PKEYSTORE_FILE=${keystore}`,
+   `-PKEYSTORE_PASSWORD=${password}`,
+   `-PKEY_ALIAS=${alias}`,
+   `-PKEY_PASSWORD=${password}`
  ];
- if(cfg.versionName) args.push(`-PVERSION_NAME=${cfg.versionName}`);
-
  await run(gradle,args,manager);
 
  const apkRoot=path.join(manager,"app","build","outputs","apk");
@@ -48,20 +80,28 @@ try{
  async function walk(dir){
   for(const entry of await fs.readdir(dir,{withFileTypes:true})){
    const p=path.join(dir,entry.name);
-   if(entry.isDirectory()) await walk(p);
-   else if(entry.name.endsWith(".apk")) found.push(p);
+   if(entry.isDirectory()) await walk(p); else if(entry.name.endsWith(".apk")) found.push(p);
   }
  }
  await walk(apkRoot);
- if(!found.length) throw new Error("Gradle completed but no APK was produced");
+ if(!found.length)throw new Error("Gradle completed but no APK was produced");
 
  const apk=found[0];
- const destination=path.join(out,`${cfg.name.replace(/[^a-zA-Z0-9._-]+/g,"-")}.apk`);
- await fs.copyFile(apk,destination);
+ const unsigned=path.join(out,"unsigned.apk");
+ const aligned=path.join(out,"aligned.apk");
+ const destination=path.join(out,`${safeName(cfg.name)}.apk`);
+
+ const zipalign=process.env.ZIPALIGN||"zipalign";
+ const apksigner=process.env.APKSIGNER||"apksigner";
+ await fs.copyFile(apk,unsigned);
+ await run(zipalign,["-f","4",unsigned,aligned]);
+ await run(apksigner,["sign","--ks",keystore,"--ks-pass",`pass:${password}`,"--key-pass",`pass:${password}`,"--ks-key-alias",alias,"--out",destination,aligned]);
+
  const data=await fs.readFile(destination);
+ await run(apksigner,["verify","--verbose",destination]);
+
  const sha256=crypto.createHash("sha256").update(data).digest("hex");
  console.log(JSON.stringify({status:"ready",apk:destination,sha256,size:data.length}));
-} finally {
- // Production worker should move only the verified output to temporary artifact storage
- // and remove the complete workspace after the job retention period.
+}finally{
+ await fs.rm(work,{recursive:true,force:true}).catch(()=>{});
 }
