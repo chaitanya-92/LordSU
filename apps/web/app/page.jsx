@@ -7,6 +7,7 @@ import {Label} from "../components/ui/label";
 import {Card,CardHeader,CardContent} from "../components/ui/card";
 
 const API=process.env.NEXT_PUBLIC_API_URL||"http://localhost:4000";
+const statusLabels={queued:"Build queued",running:"Building APK…",ready:"Build ready",failed:"Build failed"};
 const backends=[
  {id:"kernelsu",name:"KernelSU",desc:"Kernel-based root backend",branch:"main"},
  {id:"kernelsu-next",name:"KernelSU Next",desc:"Advanced KernelSU-compatible backend",branch:"dev"}
@@ -65,9 +66,9 @@ export default function Home(){
      <Button className="w-full" size="lg" disabled={busy}>{busy?<><Loader2 className="mr-2 animate-spin" size={17}/>Creating build…</>:<>Build manager <ChevronRight className="ml-2" size={17}/></>}</Button>
     </form>
     {job&&<div className="mt-5 rounded-xl bg-zinc-50 p-4 text-sm">
-      <b>{job.status==="failed"?"Build failed":job.status==="ready"?"Build ready":job.status==="running"?"Building APK…":"Build queued"}</b>
+      <b>{statusLabels[job.status]||"Build status"}</b>
       {job.id&&<p className="mt-1 text-xs text-zinc-500">Build ID: {job.id}</p>}
-      {job.status==="ready"&&job.downloadUrl&&<a className="mt-4 inline-flex items-center justify-center rounded-lg bg-black px-4 py-2 font-medium text-white no-underline" href={API+job.downloadUrl} download>Download APK</a>}
+      {job.status==="ready"&&job.downloadUrl&&<a className="mt-4 inline-flex items-center justify-center rounded-lg bg-black px-4 py-2 font-medium text-white no-underline" href={API+job.downloadUrl}>Download APK</a>}
       {job.status==="running"&&<p className="mt-2 text-xs text-zinc-500">The worker is compiling, signing and verifying your APK. This may take several minutes.</p>}
       {(job.error||error)&&<p className="mt-1 text-red-600">{job.error||error}</p>}
     </div>}
