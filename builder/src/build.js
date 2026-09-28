@@ -12,7 +12,7 @@ const BACKENDS={
 const cfg=JSON.parse(await fs.readFile(process.argv[2],"utf8"));
 if(!BACKENDS[cfg.backend]) throw new Error("Unsupported backend");
 if(!cfg.name?.trim()) throw new Error("Manager name is required");
-if(!/^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$/.test(cfg.packageName)) throw new Error("Invalid package name");
+if(!/^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$/.test(cfg.packageName)) throw new Error("Invalid package name");
 
 const work=await fs.mkdtemp(path.join(os.tmpdir(),"lordsu-"));
 const source=path.join(work,"source");
