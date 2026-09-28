@@ -11,6 +11,7 @@ const BACKENDS={
 
 const cfg=JSON.parse(await fs.readFile(process.argv[2],"utf8"));
 if(!BACKENDS[cfg.backend]) throw new Error("Unsupported backend");
+if(!cfg.name?.trim()) throw new Error("Manager name is required");
 if(!/^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$/.test(cfg.packageName)) throw new Error("Invalid package name");
 
 const work=await fs.mkdtemp(path.join(os.tmpdir(),"lordsu-"));
@@ -73,7 +74,7 @@ try{
    `-PKEY_ALIAS=${alias}`,
    `-PKEY_PASSWORD=${password}`
  ];
- await run(gradle,args,manager);
+ await run(gradle,args,manager,{GRADLE_OPTS:"-Dorg.gradle.daemon=false -Dorg.gradle.parallel=false -Dorg.gradle.jvmargs=-Xmx4g"});
 
  const apkRoot=path.join(manager,"app","build","outputs","apk");
  const found=[];
