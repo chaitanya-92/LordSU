@@ -23,6 +23,7 @@ services:
       - redis
 
   worker:
+    restart: unless-stopped
     build:
       context: .
       dockerfile: infra/docker/Dockerfile
@@ -40,6 +41,7 @@ services:
       - /tmp:/tmp
       - gradle-cache:/root/.gradle
       - build-cache:/build-cache
+      - worker-node-modules:/app/node_modules
     depends_on:
       - redis
 
@@ -61,3 +63,4 @@ volumes:
   build-artifacts:
   gradle-cache:
   build-cache:
+  worker-node-modules:
