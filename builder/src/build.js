@@ -76,7 +76,7 @@ try{
  await prepareSource(cfg.backend,backend);
 
  const manager=path.join(source,"manager");
- const gradle=path.join(manager,process.platform==="win32"?"gradlew.bat":"gradlew");
+ const gradle=process.env.GRADLE_BIN||"/opt/gradle/bin/gradle";
  await run("chmod",["+x",gradle]);
 
  await progress("branding",30,"Applying manager name, package and icon");
