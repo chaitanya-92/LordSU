@@ -1,0 +1,7 @@
+{
+  "name":"lordsu",
+  "private":true,
+  "version":"0.1.0",
+  "scripts":{"dev":"concurrently \"npm:dev:web\" \"npm:dev:api\"","dev:web":"npm --prefix apps/web run dev","dev:api":"npm --prefix apps/api run dev","worker":"npm --prefix worker run dev"},
+  "devDependencies":{"concurrently":"^9.1.2"}
+}

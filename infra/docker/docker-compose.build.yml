@@ -1,0 +1,16 @@
+services:
+  builder:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      - redis
+    volumes:
+      - build-work:/workspace
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+volumes:
+  build-work:
