@@ -40,7 +40,7 @@ async function prepareSource(backendKey,backend){
   return;
  }
  const cacheRoot=path.join(gitCache,"git");
- const mirror=path.join(cacheRoot,\`${backendKey}.git\`);
+ const mirror=path.join(cacheRoot,`${backendKey}.git`);
  await fs.mkdir(cacheRoot,{recursive:true});
  try{
   await fs.access(path.join(mirror,"HEAD"));
