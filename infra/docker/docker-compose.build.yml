@@ -1,16 +1,22 @@
 services:
-  builder:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+  worker:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        CMDLINE_TOOLS_URL: ${ANDROID_CMDLINE_TOOLS_URL:-}
     environment:
       REDIS_URL: redis://redis:6379
+      WORKER_CONCURRENCY: 1
     depends_on:
       - redis
     volumes:
       - build-work:/workspace
-  redis:
-    image: redis:7-alpine
-    restart: unless-stopped
+      - ./../../worker:/app/worker:ro
+      - ./../../builder:/app/builder:ro
+
 volumes:
   build-work:
