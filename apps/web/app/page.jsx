@@ -32,8 +32,14 @@ export default function Home(){
  const elapsed=useMemo(()=>startedAt?Math.max(0,Math.floor((now-startedAt)/1000)):0,[now,startedAt]);
  const elapsedText=`${Math.floor(elapsed/60)}m ${String(elapsed%60).padStart(2,"0")}s`;
  async function build(e){
-  e.preventDefault();setBusy(true);setError("");setStartedAt(null);setJob({status:"queued",progress:0,message:"Waiting for worker"});
-  try{const fd=new FormData();Object.entries(form).forEach(([k,v])=>{if(v!==null)fd.append(k,v)});const r=await fetch(API+"/api/builds",{method:"POST",body:fd});const d=await r.json();if(!r.ok)throw new Error(d.error||"Unable to create build");setJob(d)}catch(e){setJob({status:"failed",stage:"failed",error:e.message});setError(e.message)}finally{setBusy(false)}
+  e.preventDefault();setBusy(true);setError("");setStartedAt(null);
+  const packageName=form.packageName.trim().toLowerCase();
+  if(!/^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$/.test(packageName)){
+   const message="Use a valid lowercase package name, for example com.example.myroot.";
+   setError(message);setJob({status:"failed",stage:"failed",progress:0,message:"Invalid package name",error:message});setBusy(false);return;
+  }
+  setJob({status:"queued",progress:0,message:"Waiting for worker"});
+  try{const fd=new FormData();Object.entries({...form,packageName}).forEach(([k,v])=>{if(v!==null)fd.append(k,v)});const r=await fetch(API+"/api/builds",{method:"POST",body:fd});const d=await r.json();if(!r.ok)throw new Error(d.error||"Unable to create build");setJob(d)}catch(e){setJob({status:"failed",stage:"failed",error:e.message});setError(e.message)}finally{setBusy(false)}
  }
  const current=steps.findIndex(([id])=>id===job?.stage);
  return <main className="min-h-screen bg-[#fafafa] text-zinc-950">
@@ -55,7 +61,8 @@ export default function Home(){
     <CardContent>
      <form onSubmit={build} className="space-y-5">
       <div><Label>Manager name</Label><Input className="mt-2 h-11" value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="MyRoot" required/></div>
-      <div><Label>Package name</Label><Input className="mt-2 h-11" value={form.packageName} onChange={e=>setForm({...form,packageName:e.target.value})} placeholder="com.example.myroot" required/></div>
+      <div><Label>Package name</Label><Input className="mt-2 h-11 font-mono text-sm" value={form.packageName} onChange={e=>setForm({...form,packageName:e.target.value.toLowerCase().replace(/[^a-z0-9_.]/g,"")})} placeholder="com.example.myroot" required/>
+      <p className="mt-1.5 text-xs text-zinc-500">Lowercase letters, numbers, underscores and dots only.</p></div>
       <div><Label>Icon</Label><label className="mt-2 flex cursor-pointer items-center gap-3 rounded-xl border border-dashed p-4 text-sm text-zinc-500 transition hover:border-zinc-400 hover:bg-zinc-50"><Upload size={18}/><span className="truncate">{form.icon?form.icon.name:"Upload PNG or WebP"}</span><input className="hidden" type="file" accept="image/png,image/webp" onChange={e=>setForm({...form,icon:e.target.files?.[0]||null})}/></label></div>
       <div><Label>Root backend</Label><div className="mt-2 grid gap-2">{backends.map(b=><button type="button" key={b.id} onClick={()=>setForm({...form,backend:b.id})} className={`rounded-xl border p-4 text-left transition-all ${form.backend===b.id?"border-zinc-950 bg-zinc-50 shadow-sm":"border-zinc-200 hover:-translate-y-0.5 hover:border-zinc-400 hover:shadow-sm"}`}><div className="flex items-center justify-between font-medium">{b.name}{form.backend===b.id&&<Check size={17}/>}</div><p className="mt-1 text-xs text-zinc-500">{b.desc} · {b.branch}</p></button>)}</div></div>
       <Button className="w-full h-11" size="lg" disabled={busy}>{busy?<><Loader2 className="mr-2 animate-spin" size={17}/>Submitting build…</>:<>Build manager <ChevronRight className="ml-2" size={17}/></>}</Button>
