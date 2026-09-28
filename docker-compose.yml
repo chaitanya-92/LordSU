@@ -36,12 +36,12 @@ services:
       GIT_CACHE_DIR: /build-cache
       WORKER_CONCURRENCY: 1
     volumes:
-      - ./:/app:ro
+      - ./worker:/app/worker:ro
+      - ./builder:/app/builder:ro
       - build-artifacts:/storage
       - /tmp:/tmp
       - gradle-cache:/root/.gradle
       - build-cache:/build-cache
-      - worker-node-modules:/app/node_modules
     depends_on:
       - redis
 
@@ -63,4 +63,3 @@ volumes:
   build-artifacts:
   gradle-cache:
   build-cache:
-  worker-node-modules:
