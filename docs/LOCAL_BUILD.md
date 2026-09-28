@@ -1,14 +1,12 @@
 # Local development
 
-Prerequisites:
-- Docker
-- Docker Compose
-- Git
+Install Docker and Docker Compose, then:
 
-Start the API, Redis and web UI:
-
+    docker compose build worker
     docker compose up
 
-The web UI is available on port 3000 and the API on port 4000.
+Open http://localhost:3000.
 
-The production Android builder is separate because it needs a pinned Android SDK/JDK/NDK image. Do not expose the builder container directly to the public internet.
+The worker image contains the Android command-line tools, Android 37 platform/build-tools and NDK 29 required by the current KernelSU manager build configuration. The Android command-line tools package is downloaded from Google's official Android developer distribution.
+
+The production deployment should use pinned image digests, private artifact storage, authenticated API access, build concurrency limits and a separate signing boundary.

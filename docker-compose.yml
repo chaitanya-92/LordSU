@@ -22,6 +22,24 @@ services:
     depends_on:
       - redis
 
+  worker:
+    build:
+      context: ./infra/docker
+      dockerfile: Dockerfile
+    working_dir: /app
+    command: sh -c "npm --prefix worker install && node worker/src/worker.js"
+    environment:
+      REDIS_URL: redis://redis:6379
+      ARTIFACT_DIR: /storage
+      BUILDER_SCRIPT: /app/builder/src/build.js
+      WORKER_CONCURRENCY: 1
+    volumes:
+      - ./:/app:ro
+      - build-artifacts:/storage
+      - /tmp:/tmp
+    depends_on:
+      - redis
+
   web:
     image: node:22-bookworm
     working_dir: /app/apps/web
