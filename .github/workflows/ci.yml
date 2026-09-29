@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            apps/api/package.json
+            apps/web/package.json
+            worker/package.json
+
+      - name: Install API dependencies
+        working-directory: apps/api
+        run: npm install --omit=dev
+
+      - name: Install worker dependencies
+        working-directory: worker
+        run: npm install --omit=dev
+
+      - name: Install web dependencies
+        working-directory: apps/web
+        run: npm install
+
+      - name: Syntax check
+        run: |
+          node --check apps/api/src/server.js
+          node --check worker/src/worker.js
+          node --check builder/src/build.js
+
+      - name: Build web
+        working-directory: apps/web
+        run: npm run build
+
+      - name: Validate Docker Compose
+        run: docker compose -f docker-compose.yml config
+
+      - name: Validate production Compose
+        run: |
+          REDIS_PASSWORD=ci-test-password           CORS_ORIGIN=http://localhost:3000           NEXT_PUBLIC_API_URL=http://localhost:4000           docker compose -f docker-compose.prod.yml config
