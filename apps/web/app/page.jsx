@@ -30,8 +30,8 @@ const packageSuggestion=name=>{
   const slug=name.toLowerCase().trim().replace(/[^a-z0-9]+/g,"").replace(/^[^a-z]+/,"")||"manager";
   return `com.${slug}.manager`;
 };
-const formatBytes=bytes=>bytes?\`${(bytes/1024/1024).toFixed(2)} MB\`:"—";
-const shortHash=value=>value&&value.length>18?\`${value.slice(0,10)}…${value.slice(-8)}\`:value||"—";
+const formatBytes=bytes=>bytes?`${(bytes/1024/1024).toFixed(2)} MB`:"—";
+const shortHash=value=>value&&value.length>18?`${value.slice(0,10)}…${value.slice(-8)}`:value||"—";
 const conciseError=value=>{
   if(!value)return "The build worker could not complete the build.";
   const text=String(value).replace(/\\s+/g," ").trim();
