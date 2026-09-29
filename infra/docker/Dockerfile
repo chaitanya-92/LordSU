@@ -1,12 +1,6 @@
-# Android toolchain stage: Linux amd64 SDK 37 + NDK 29 + JDK 21.
-FROM saschpe/android-ndk:37.0-jdk21.0.11_10-ndk29.0.14206865-cmake4.1.2 AS android
-
-# Reuse the Android image as the final runtime so the builder gets the
-# exact JDK/SDK/NDK toolchain required by the current KernelSU manager.
+# Android toolchain: Linux amd64 + JDK 21 + SDK 37 + NDK 29.
 FROM saschpe/android-ndk:37.0-jdk21.0.11_10-ndk29.0.14206865-cmake4.1.2
 
-# The upstream Android image runs as a non-root user. Package installation
-# and system-level toolchain setup must happen as root.
 USER root
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -41,14 +35,12 @@ RUN mkdir -p /opt/gradle \
     && /opt/gradle/current/bin/gradle --version \
     && rm -f /tmp/gradle.zip
 
-# Install the exact Android components required by the current KernelSU manager.
-# Do not rely on the base image's directory layout for validation.
+# The base image already provides the SDK platform, build tools, NDK and JDK
+# required by the current KernelSU manager. Only install the legacy CMake
+# version that the manager build expects. Avoid requesting SDK packages whose
+# repository metadata may not expose them under the deprecated sdkmanager CLI.
 RUN yes | sdkmanager --sdk_root="$ANDROID_SDK_ROOT" --licenses >/dev/null 2>&1 || true \
-    && sdkmanager --sdk_root="$ANDROID_SDK_ROOT" \
-       "platforms;android-37" \
-       "build-tools;37.0.0" \
-       "ndk;29.0.14206865" \
-       "cmake;3.22.1" \
+    && sdkmanager --sdk_root="$ANDROID_SDK_ROOT" "cmake;3.22.1" \
     && test -x "$ANDROID_SDK_ROOT/cmake/3.22.1/bin/cmake" \
     && "$ANDROID_SDK_ROOT/cmake/3.22.1/bin/cmake" --version \
     && test -d "$ANDROID_SDK_ROOT/platforms/android-37" \
