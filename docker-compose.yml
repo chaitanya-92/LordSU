@@ -18,7 +18,7 @@ services:
     volumes:
       - ./:/app
       - build-artifacts:/storage
-      - /tmp:/tmp
+      - build-uploads:/uploads
     depends_on:
       - redis
 
@@ -40,7 +40,7 @@ services:
       - ./worker:/app/worker:ro
       - ./builder:/app/builder:ro
       - build-artifacts:/storage
-      - /tmp:/tmp
+      - build-uploads:/uploads
       - gradle-cache:/root/.gradle
       - build-cache:/build-cache
     depends_on:
