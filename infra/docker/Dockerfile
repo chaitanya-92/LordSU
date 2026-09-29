@@ -16,27 +16,29 @@ RUN mkdir -p /var/lib/apt/lists/partial \
     && update-ca-certificates
 
 ARG GRADLE_VERSION=9.7.1
+ARG GRADLE_COMPAT_VERSION=9.2.0
 RUN mkdir -p /opt/gradle \
-    && success=0; \
-       for attempt in 1 2 3 4; do \
-         rm -f /tmp/gradle.zip; \
-         if curl -fL --retry 3 --retry-delay 2 --connect-timeout 20 --max-time 600 \
-            "https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip" -o /tmp/gradle.zip \
-            && test -s /tmp/gradle.zip \
-            && unzip -tq /tmp/gradle.zip; then \
-           success=1; break; \
-         fi; \
-         echo "Gradle distribution download/archive validation failed on attempt $attempt; retrying..." >&2; \
-         sleep 2; \
-       done; \
-       test "$success" -eq 1 \
-    && unzip -q /tmp/gradle.zip -d /opt/gradle \
-    && ln -sfn /opt/gradle/gradle-${GRADLE_VERSION} /opt/gradle/current \
-    && /opt/gradle/current/bin/gradle --version \
-    && rm -f /tmp/gradle.zip
+    && for version in "$GRADLE_VERSION" "$GRADLE_COMPAT_VERSION"; do \
+         success=0; \
+         for attempt in 1 2 3 4; do \
+           rm -f "/tmp/gradle-$version.zip"; \
+           if curl -fL --retry 3 --retry-delay 2 --connect-timeout 20 --max-time 600 \
+              "https://services.gradle.org/distributions/gradle-$version-bin.zip" -o "/tmp/gradle-$version.zip" \
+              && test -s "/tmp/gradle-$version.zip" \
+              && unzip -tq "/tmp/gradle-$version.zip"; then \
+             success=1; break; \
+           fi; \
+           echo "Gradle $version download/archive validation failed on attempt $attempt; retrying..." >&2; \
+           sleep 2; \
+         done; \
+         test "$success" -eq 1 \
+         && unzip -q "/tmp/gradle-$version.zip" -d /opt/gradle \
+         && rm -f "/tmp/gradle-$version.zip"; \
+       done \
+    && ln -sfn /opt/gradle/gradle-$GRADLE_VERSION /opt/gradle/current \
+    && /opt/gradle/gradle-$GRADLE_VERSION/bin/gradle --version \
+    && /opt/gradle/gradle-$GRADLE_COMPAT_VERSION/bin/gradle --version
 
-# The base image supplies the Android SDK/NDK/JDK toolchain. Install only
-# the legacy CMake version required by the current KernelSU manager.
 RUN yes | sdkmanager --sdk_root="$ANDROID_SDK_ROOT" --licenses >/dev/null 2>&1 || true \
     && sdkmanager --sdk_root="$ANDROID_SDK_ROOT" "cmake;3.22.1" \
     && test -x "$ANDROID_SDK_ROOT/cmake/3.22.1/bin/cmake" \
@@ -48,6 +50,8 @@ RUN npm --prefix /opt/lordsu-worker install --omit=dev \
     && cp -a /opt/lordsu-worker/node_modules/. /app/node_modules/
 
 ENV NODE_PATH=/opt/lordsu-worker/node_modules
+ENV GRADLE_KERNELSU_BIN=/opt/gradle/gradle-9.7.1/bin/gradle
+ENV GRADLE_KERNELSU_NEXT_BIN=/opt/gradle/gradle-9.2.0/bin/gradle
 
 COPY worker/src /app/worker/src
 COPY builder/src /app/builder/src
