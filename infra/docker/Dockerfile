@@ -47,7 +47,7 @@ RUN yes | sdkmanager --sdk_root="$ANDROID_SDK_ROOT" --licenses >/dev/null 2>&1 |
     && sdkmanager --sdk_root="$ANDROID_SDK_ROOT" "cmake;3.22.1" \
     && test -x /opt/android-sdk-linux/cmake/3.22.1/bin/cmake \
     && /opt/android-sdk-linux/cmake/3.22.1/bin/cmake --version \
-    && test -d /opt/android-sdk-linux/platforms/android-37.0 \
+    && test -d /opt/android-sdk-linux/platforms/android-37 \
     && test -d /opt/android-sdk-linux/build-tools/37.0.0 \
     && test -d /opt/android-sdk-linux/ndk/29.0.14206865
 
