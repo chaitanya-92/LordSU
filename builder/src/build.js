@@ -75,7 +75,13 @@ try{
  const backend=BACKENDS[cfg.backend];
  await progress("source",15,`Fetching ${cfg.backend === "kernelsu" ? "KernelSU" : "KernelSU Next"} source`);
  await prepareSource(cfg.backend,backend);
- const sourceCommit=(await new Promise((resolve,reject)=>{const child=spawn("git",["-C",source,"rev-parse","HEAD"],{stdio:["ignore","pipe","pipe"]});let out="";child.stdout.on("data",d=>out+=d);child.on("error",reject);child.on("close",code=>code===0?resolve(out.trim()):reject(new Error("Unable to resolve source commit")));}))).trim();
+ const sourceCommit=await new Promise((resolve,reject)=>{
+  const child=spawn("git",["-C",source,"rev-parse","HEAD"],{stdio:["ignore","pipe","pipe"]});
+  let out="";
+  child.stdout.on("data",d=>out+=d);
+  child.on("error",reject);
+  child.on("close",code=>code===0?resolve(out.trim()):reject(new Error("Unable to resolve source commit")));
+ });
  await fs.writeFile(sourceCommitFile,sourceCommit+"\n");
 
  const manager=path.join(source,"manager");
