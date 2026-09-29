@@ -49,5 +49,9 @@ RUN npm --prefix /opt/lordsu-worker install --omit=dev \
 
 ENV NODE_PATH=/opt/lordsu-worker/node_modules
 
+COPY worker/src /app/worker/src
+COPY builder/src /app/builder/src
+COPY builder/package.json /app/builder/package.json
+
 WORKDIR /app
 CMD ["sleep","infinity"]
