@@ -1,8 +1,46 @@
 @import "tailwindcss";
-:root{--background:#fafafa;--foreground:#18181b;--card:#fff;--muted:#f4f4f5}
-*{box-sizing:border-box}body{margin:0;background:var(--background);color:var(--foreground);font-family:ui-sans-serif,system-ui,sans-serif}.bg-background{background:var(--background)}.text-foreground{color:var(--foreground)}.bg-card{background:var(--card)}.bg-muted{background:var(--muted)}
+
+:root{
+  --background:#fafafa;
+  --foreground:#18181b;
+  --card:#fff;
+  --muted:#f4f4f5;
+}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;
+  background:var(--background);
+  color:var(--foreground);
+  font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+button,input,select{font:inherit}
+::selection{background:#18181b;color:#fff}
+button:focus-visible,input:focus-visible,select:focus-visible{
+  outline:2px solid rgba(24,24,27,.35);
+  outline-offset:2px;
+}
+.bg-background{background:var(--background)}
+.text-foreground{color:var(--foreground)}
+.bg-card{background:var(--card)}
+.bg-muted{background:var(--muted)}
 
 @keyframes lordsu-shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
 @keyframes lordsu-pulse{0%,100%{opacity:.55}50%{opacity:1}}
-.lordsu-shimmer{background:linear-gradient(90deg,transparent,rgba(255,255,255,.7),transparent);background-size:200% 100%;animation:lordsu-shimmer 1.8s linear infinite}
+.lordsu-shimmer{
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.7),transparent);
+  background-size:200% 100%;
+  animation:lordsu-shimmer 1.8s linear infinite;
+}
 .lordsu-pulse{animation:lordsu-pulse 1.6s ease-in-out infinite}
+
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{
+    animation-duration:.01ms!important;
+    animation-iteration-count:1!important;
+    transition-duration:.01ms!important;
+  }
+}
