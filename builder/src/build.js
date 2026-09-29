@@ -16,7 +16,7 @@ if(!/^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$/.test(cfg.packageName)) throw new Err
 
 const work=await fs.mkdtemp(path.join(os.tmpdir(),"lordsu-"));
 const source=path.join(work,"source");
-const out=path.join(work,"out");
+const out=process.env.BUILD_OUTPUT_DIR||path.join(work,"out");
 const progressFile=process.env.PROGRESS_FILE||path.join(work,"progress.json");
 const gitCache=process.env.GIT_CACHE_DIR||null;
 await fs.mkdir(out,{recursive:true});
