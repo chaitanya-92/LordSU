@@ -10,9 +10,9 @@ FROM saschpe/android-ndk:37.0-jdk21.0.11_10-ndk29.0.14206865-cmake4.1.2
 USER root
 
 ENV DEBIAN_FRONTEND=noninteractive
-ENV ANDROID_HOME=/opt/android-sdk
-ENV ANDROID_SDK_ROOT=/opt/android-sdk
-ENV PATH=/opt/gradle/current/bin:/opt/android-sdk/cmdline-tools/latest/bin:/opt/android-sdk/platform-tools:/opt/android-sdk/build-tools/37.0.0:/opt/android-sdk/cmake/3.22.1/bin:/usr/local/bin:$PATH
+ENV ANDROID_HOME=/opt/android-sdk-linux
+ENV ANDROID_SDK_ROOT=/opt/android-sdk-linux
+ENV PATH=/opt/gradle/current/bin:/opt/android-sdk-linux/cmdline-tools/latest/bin:/opt/android-sdk-linux/platform-tools:/opt/android-sdk-linux/build-tools/37.0.0:/opt/android-sdk-linux/cmake/3.22.1/bin:/usr/local/bin:$PATH
 
 RUN mkdir -p /var/lib/apt/lists/partial \
     && apt-get update \
@@ -45,11 +45,11 @@ RUN mkdir -p /opt/gradle \
 # by the current KernelSU manager build.
 RUN yes | sdkmanager --sdk_root="$ANDROID_SDK_ROOT" --licenses >/dev/null 2>&1 || true \
     && sdkmanager --sdk_root="$ANDROID_SDK_ROOT" "cmake;3.22.1" \
-    && test -x /opt/android-sdk/cmake/3.22.1/bin/cmake \
-    && /opt/android-sdk/cmake/3.22.1/bin/cmake --version \
-    && test -d /opt/android-sdk/platforms/android-37.0 \
-    && test -d /opt/android-sdk/build-tools/37.0.0 \
-    && test -d /opt/android-sdk/ndk/29.0.14206865
+    && test -x /opt/android-sdk-linux/cmake/3.22.1/bin/cmake \
+    && /opt/android-sdk-linux/cmake/3.22.1/bin/cmake --version \
+    && test -d /opt/android-sdk-linux/platforms/android-37.0 \
+    && test -d /opt/android-sdk-linux/build-tools/37.0.0 \
+    && test -d /opt/android-sdk-linux/ndk/29.0.14206865
 
 COPY worker/package.json /opt/lordsu-worker/package.json
 RUN npm --prefix /opt/lordsu-worker install --omit=dev \
