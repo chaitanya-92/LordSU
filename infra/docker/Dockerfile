@@ -41,15 +41,19 @@ RUN mkdir -p /opt/gradle \
     && /opt/gradle/current/bin/gradle --version \
     && rm -f /tmp/gradle.zip
 
-# Accept SDK licenses first, then install the exact CMake version requested
-# by the current KernelSU manager build.
+# Install the exact Android components required by the current KernelSU manager.
+# Do not rely on the base image's directory layout for validation.
 RUN yes | sdkmanager --sdk_root="$ANDROID_SDK_ROOT" --licenses >/dev/null 2>&1 || true \
-    && sdkmanager --sdk_root="$ANDROID_SDK_ROOT" "cmake;3.22.1" \
-    && test -x /opt/android-sdk-linux/cmake/3.22.1/bin/cmake \
-    && /opt/android-sdk-linux/cmake/3.22.1/bin/cmake --version \
-    && test -d /opt/android-sdk-linux/platforms/android-37 \
-    && test -d /opt/android-sdk-linux/build-tools/37.0.0 \
-    && test -d /opt/android-sdk-linux/ndk/29.0.14206865
+    && sdkmanager --sdk_root="$ANDROID_SDK_ROOT" \
+       "platforms;android-37" \
+       "build-tools;37.0.0" \
+       "ndk;29.0.14206865" \
+       "cmake;3.22.1" \
+    && test -x "$ANDROID_SDK_ROOT/cmake/3.22.1/bin/cmake" \
+    && "$ANDROID_SDK_ROOT/cmake/3.22.1/bin/cmake" --version \
+    && test -d "$ANDROID_SDK_ROOT/platforms/android-37" \
+    && test -d "$ANDROID_SDK_ROOT/build-tools/37.0.0" \
+    && test -d "$ANDROID_SDK_ROOT/ndk/29.0.14206865"
 
 COPY worker/package.json /opt/lordsu-worker/package.json
 RUN npm --prefix /opt/lordsu-worker install --omit=dev \
