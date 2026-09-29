@@ -5,12 +5,17 @@ FROM saschpe/android-ndk:37.0-jdk21.0.11_10-ndk29.0.14206865-cmake4.1.2 AS andro
 # exact JDK/SDK/NDK toolchain required by the current KernelSU manager.
 FROM saschpe/android-ndk:37.0-jdk21.0.11_10-ndk29.0.14206865-cmake4.1.2
 
+# The upstream Android image runs as a non-root user. Package installation
+# and system-level toolchain setup must happen as root.
+USER root
+
 ENV DEBIAN_FRONTEND=noninteractive
 ENV ANDROID_HOME=/opt/android-sdk
 ENV ANDROID_SDK_ROOT=/opt/android-sdk
 ENV PATH=/opt/gradle/current/bin:/opt/android-sdk/cmdline-tools/latest/bin:/opt/android-sdk/platform-tools:/opt/android-sdk/build-tools/37.0.0:/opt/android-sdk/cmake/3.22.1/bin:/usr/local/bin:$PATH
 
-RUN apt-get update \
+RUN mkdir -p /var/lib/apt/lists/partial \
+    && apt-get update \
     && apt-get install -y --no-install-recommends \
        ca-certificates curl git unzip zip python3 python3-pil nodejs npm bash \
     && rm -rf /var/lib/apt/lists/* \
