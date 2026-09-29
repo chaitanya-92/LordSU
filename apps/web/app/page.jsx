@@ -92,7 +92,14 @@ export default function Home(){
       </div>}
       <div className="border-t border-white/10 p-5">
        <div className="space-y-3">{steps.map(([id,title,desc],i)=>{const done=job.status==="ready"?i<steps.length:i<current;const active=i===current&&!terminalStatuses.includes(job.status);return <div key={id} className="flex gap-3"><div className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border ${done?"border-white bg-white text-zinc-950":active?"border-white text-white":"border-white/15 text-white/30"}`}>{done?<Check size={13}/>:active?<Loader2 size={13} className="animate-spin"/>:<Circle size={8}/>}</div><div className="min-w-0"><div className={`text-sm ${active||done?"text-white":"text-white/35"}`}>{title}</div><div className="text-[11px] text-white/35">{desc}</div></div></div>})}</div>
-       {job.status==="ready"&&job.downloadUrl&&<a href={API+job.downloadUrl} className="mt-6 flex h-11 items-center justify-center gap-2 rounded-xl bg-white font-medium text-zinc-950 transition hover:scale-[1.01] hover:bg-zinc-100"><Download size={17}/>Download APK</a>}
+       {job.status==="ready"&&job.downloadUrl&&<>
+        <div className="mt-5 rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-zinc-300">
+         <div className="flex justify-between gap-3"><span>APK</span><span className="font-mono text-white">{job.fileName}</span></div>
+         {job.size&&<div className="mt-1 flex justify-between gap-3"><span>Size</span><span className="text-white">{(job.size/1024/1024).toFixed(2)} MB</span></div>}
+         {job.sha256&&<div className="mt-1"><div className="text-zinc-500">SHA-256</div><div className="mt-1 break-all font-mono text-[10px] text-zinc-300">{job.sha256}</div></div>}
+        </div>
+        <a href={API+job.downloadUrl} className="mt-3 flex h-11 items-center justify-center gap-2 rounded-xl bg-white font-medium text-zinc-950 transition hover:scale-[1.01] hover:bg-zinc-100"><Download size={17}/>Download APK</a>
+       </>}
        {!terminalStatuses.includes(job.status)&&<button type="button" onClick={cancelBuild} disabled={job.status==="cancelling"} className="mt-3 flex h-10 w-full items-center justify-center rounded-xl border border-red-400/30 text-sm font-medium text-red-200 transition hover:bg-red-500/10 disabled:opacity-50">{job.status==="cancelling"?"Cancelling…":"Cancel build"}</button>}
       </div>
      </div>}
