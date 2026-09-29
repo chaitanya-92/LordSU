@@ -1,9 +1,9 @@
-# Android toolchain stage: Linux amd64 SDK 37 + NDK 29.
+# Android toolchain stage: Linux amd64 SDK 37 + NDK 29 + JDK 21.
 FROM saschpe/android-ndk:37.0-jdk21.0.11_10-ndk29.0.14206865-cmake4.1.2 AS android
 
-# Debian Bookworm does not ship OpenJDK 21. Use a JDK 21 base for the
-# final runtime and install the small set of worker-side utilities there.
-FROM eclipse-temurin:21-jdk-bookworm
+# Reuse the Android image as the final runtime so the builder gets the
+# exact JDK/SDK/NDK toolchain required by the current KernelSU manager.
+FROM saschpe/android-ndk:37.0-jdk21.0.11_10-ndk29.0.14206865-cmake4.1.2
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV ANDROID_HOME=/opt/android-sdk
@@ -15,8 +15,6 @@ RUN apt-get update \
        ca-certificates curl git unzip zip python3 python3-pil nodejs npm bash \
     && rm -rf /var/lib/apt/lists/* \
     && update-ca-certificates
-
-COPY --from=android /opt/android-sdk /opt/android-sdk
 
 ARG GRADLE_VERSION=9.7.1
 RUN mkdir -p /opt/gradle \
@@ -38,8 +36,8 @@ RUN mkdir -p /opt/gradle \
     && /opt/gradle/current/bin/gradle --version \
     && rm -f /tmp/gradle.zip
 
-# Accept the SDK license non-interactively, then install exactly the CMake
-# version requested by the current KernelSU manager build.
+# Accept SDK licenses first, then install the exact CMake version requested
+# by the current KernelSU manager build.
 RUN yes | sdkmanager --sdk_root="$ANDROID_SDK_ROOT" --licenses >/dev/null 2>&1 || true \
     && sdkmanager --sdk_root="$ANDROID_SDK_ROOT" "cmake;3.22.1" \
     && test -x /opt/android-sdk/cmake/3.22.1/bin/cmake \
