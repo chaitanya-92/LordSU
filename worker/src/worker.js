@@ -108,6 +108,7 @@ const worker=new Worker("lordsu-builds",async job=>{
   if(state&&JSON.parse(state).cancelRequested)throw new Error("__CANCELLED__");
   const files=await fs.readdir(outputDir);
   const apk=files.find(f=>f.endsWith(".apk"));
+  const sourceCommit=(await fs.readFile(path.join(outputDir,"source-commit.txt"),"utf8").catch(()=>"")).trim()||null;
   if(!apk)throw new Error("Build completed without an APK");
   const buildDir=path.join(storage,id);
   await fs.rm(buildDir,{recursive:true,force:true});
@@ -116,7 +117,7 @@ const worker=new Worker("lordsu-builds",async job=>{
   await fs.copyFile(path.join(outputDir,apk),artifactPath);
   const artifactData=await fs.readFile(artifactPath);
   const sha256=crypto.createHash("sha256").update(artifactData).digest("hex");
-  await save(id,{status:"ready",stage:"ready",progress:100,message:"APK is ready to download",completedAt:new Date().toISOString(),artifact:path.join(id,apk),fileName:apk,size:artifactData.length,sha256});
+  await save(id,{status:"ready",stage:"ready",progress:100,message:"APK is ready to download",completedAt:new Date().toISOString(),artifact:path.join(id,apk),fileName:apk,size:artifactData.length,sha256,sourceCommit,backend:config.backend});
  }catch(error){
   if(error.message==="__CANCELLED__"){
    await fs.rm(path.join(storage,id),{recursive:true,force:true}).catch(()=>{});
