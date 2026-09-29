@@ -4,6 +4,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
 import {spawn} from "node:child_process";
+import crypto from "node:crypto";
 
 const redis=new IORedis(process.env.REDIS_URL||"redis://127.0.0.1:6379",{maxRetriesPerRequest:null});
 const storage=process.env.ARTIFACT_DIR||"/storage";
@@ -111,8 +112,11 @@ const worker=new Worker("lordsu-builds",async job=>{
   const buildDir=path.join(storage,id);
   await fs.rm(buildDir,{recursive:true,force:true});
   await fs.mkdir(buildDir,{recursive:true});
-  await fs.copyFile(path.join(outputDir,apk),path.join(buildDir,apk));
-  await save(id,{status:"ready",stage:"ready",progress:100,message:"APK is ready to download",completedAt:new Date().toISOString(),artifact:path.join(id,apk),fileName:apk});
+  const artifactPath=path.join(buildDir,apk);
+  await fs.copyFile(path.join(outputDir,apk),artifactPath);
+  const artifactData=await fs.readFile(artifactPath);
+  const sha256=crypto.createHash("sha256").update(artifactData).digest("hex");
+  await save(id,{status:"ready",stage:"ready",progress:100,message:"APK is ready to download",completedAt:new Date().toISOString(),artifact:path.join(id,apk),fileName:apk,size:artifactData.length,sha256});
  }catch(error){
   if(error.message==="__CANCELLED__"){
    await fs.rm(path.join(storage,id),{recursive:true,force:true}).catch(()=>{});
