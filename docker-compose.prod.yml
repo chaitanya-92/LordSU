@@ -52,7 +52,7 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: production
-      REDIS_URL: redis://redis:6379
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
       ARTIFACT_DIR: /storage
       UPLOAD_DIR: /uploads
       BUILDER_SCRIPT: /app/builder/src/build.js
