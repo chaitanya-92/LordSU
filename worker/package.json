@@ -1,5 +1,5 @@
 {
  "name":"@lordsu/worker","private":true,"version":"0.1.0","type":"module",
  "scripts":{"dev":"node --watch src/worker.js","start":"node src/worker.js"},
- "dependencies":{"bullmq":"^5.34.0","ioredis":"^5.4.1"}
+ "dependencies":{"bullmq":"^5.34.0","ioredis":"^6.0.0"}
 }
