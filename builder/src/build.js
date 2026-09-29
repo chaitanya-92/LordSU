@@ -85,7 +85,7 @@ try{
  await fs.writeFile(sourceCommitFile,sourceCommit+"\n");
 
  const manager=path.join(source,"manager");
- const gradle=process.env.GRADLE_BIN||"/opt/gradle/current/bin/gradle";
+ const gradle=cfg.backend==="kernelsu-next"\n  ? (process.env.GRADLE_KERNELSU_NEXT_BIN||"/opt/gradle/gradle-9.2.0/bin/gradle")\n  : (process.env.GRADLE_KERNELSU_BIN||process.env.GRADLE_BIN||"/opt/gradle/gradle-9.7.1/bin/gradle");
  await run("chmod",["+x",gradle]);
 
  await progress("branding",30,"Applying manager name, package and icon");
@@ -111,7 +111,7 @@ try{
    `-PKEY_ALIAS=${alias}`,
    `-PKEY_PASSWORD=${password}`
  ];
- await run(gradle,[...args,"--build-cache","--parallel","--max-workers=4"],manager,{GRADLE_OPTS:"-Dorg.gradle.daemon=true -Dorg.gradle.parallel=true -Dorg.gradle.jvmargs=-Xmx4g -Dorg.gradle.internal.http.connectionTimeout=60000 -Dorg.gradle.internal.http.socketTimeout=120000"});
+ await run(gradle,[...args,"--build-cache","--parallel","--max-workers=4"],manager,{GRADLE_OPTS:"-Dorg.gradle.daemon=true -Dorg.gradle.parallel=true -Dorg.gradle.vfs.watch=false -Dorg.gradle.jvmargs=-Xmx4g -Dorg.gradle.internal.http.connectionTimeout=60000 -Dorg.gradle.internal.http.socketTimeout=120000"});
 
  await progress("package",82,"Collecting and packaging the generated APK");
  const apkRoot=path.join(manager,"app","build","outputs","apk");
