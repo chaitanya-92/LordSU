@@ -16,13 +16,32 @@ async function save(id,patch){
  await redis.set(`lordsu:build:${id}`,JSON.stringify(next),"EX",86400);
  return next;
 }
-function runBuilder(args,cwd,env){
+
+function runBuilder(args,cwd,env,id){
  return new Promise((resolve,reject)=>{
-  const child=spawn("node",args,{cwd,env:{...process.env,...env},stdio:["ignore","ignore","pipe"]});
+  const child=spawn("node",args,{cwd,env:{...process.env,...env},detached:true,stdio:["ignore","ignore","pipe"]});
   let stderr="";
-  child.stderr.on("data",chunk=>{stderr+=chunk.toString(); if(stderr.length>12000) stderr=stderr.slice(-12000)});
-  child.on("error",reject);
-  child.on("close",code=>code===0?resolve():reject(new Error(stderr.trim()||`Android builder exited with code ${code}`)));
+  let stopping=false;
+  const cancelPoll=setInterval(async()=>{
+   try{
+    const raw=await redis.get(`lordsu:build:${id}`);
+    const state=raw?JSON.parse(raw):null;
+    if(state?.cancelRequested&&!stopping){
+     stopping=true;
+     clearInterval(cancelPoll);
+     try{process.kill(-child.pid,"SIGTERM")}catch{}
+     setTimeout(()=>{try{process.kill(-child.pid,"SIGKILL")}catch{}},2000);
+    }
+   }catch{}
+  },500);
+  child.stderr.on("data",chunk=>{stderr+=chunk.toString();if(stderr.length>12000)stderr=stderr.slice(-12000)});
+  child.on("error",error=>{clearInterval(cancelPoll);reject(error)});
+  child.on("close",code=>{
+   clearInterval(cancelPoll);
+   if(stopping)return reject(new Error("__CANCELLED__"));
+   if(code===0)return resolve();
+   reject(new Error(stderr.trim()||`Android builder exited with code ${code}`));
+  });
  });
 }
 
@@ -31,20 +50,31 @@ new Worker("lordsu-builds",async job=>{
  const workspace=await fs.mkdtemp(path.join(os.tmpdir(),"lordsu-build-"));
  const configPath=path.join(workspace,"config.json");
  const progressFile=path.join(workspace,"progress.json");
+ const outputDir=path.join(workspace,"out");
  const buildConfig={...config,iconPath:iconPath||null};
  await fs.writeFile(configPath,JSON.stringify(buildConfig,null,2));
+ await fs.mkdir(outputDir,{recursive:true});
  await fs.mkdir(storage,{recursive:true});
  let monitor;
  try{
+  const existing=await redis.get(`lordsu:build:${id}`);
+  if(existing&&JSON.parse(existing).cancelRequested){
+   await save(id,{status:"cancelled",stage:"cancelled",progress:0,message:"Build cancelled",completedAt:new Date().toISOString()});
+   return;
+  }
   await save(id,{status:"running",stage:"preparing",progress:5,message:"Preparing isolated build workspace",startedAt:new Date().toISOString()});
   monitor=setInterval(async()=>{
    try{
     const raw=await fs.readFile(progressFile,"utf8");
     const p=JSON.parse(raw);
+    const current=await redis.get(`lordsu:build:${id}`);
+    if(current&&JSON.parse(current).cancelRequested)return;
     await save(id,{status:"running",stage:p.stage,progress:p.percent,message:p.message});
    }catch{}
   },700);
-  await runBuilder([builder,configPath],workspace,{PROGRESS_FILE:progressFile,BUILD_OUTPUT_DIR:outputDir});
+  await runBuilder([builder,configPath],workspace,{PROGRESS_FILE:progressFile,BUILD_OUTPUT_DIR:outputDir},id);
+  const state=await redis.get(`lordsu:build:${id}`);
+  if(state&&JSON.parse(state).cancelRequested)throw new Error("__CANCELLED__");
   const files=await fs.readdir(outputDir);
   const apk=files.find(f=>f.endsWith(".apk"));
   if(!apk)throw new Error("Build completed without an APK");
@@ -54,7 +84,12 @@ new Worker("lordsu-builds",async job=>{
   await fs.copyFile(path.join(outputDir,apk),path.join(buildDir,apk));
   await save(id,{status:"ready",stage:"ready",progress:100,message:"APK is ready to download",completedAt:new Date().toISOString(),artifact:path.join(id,apk),fileName:apk});
  }catch(error){
-  await save(id,{status:"failed",stage:"failed",progress:0,message:"Build failed",completedAt:new Date().toISOString(),error:error.message});
+  if(error.message==="__CANCELLED__"){
+   await fs.rm(path.join(storage,id),{recursive:true,force:true}).catch(()=>{});
+   await save(id,{status:"cancelled",stage:"cancelled",progress:0,message:"Build cancelled",completedAt:new Date().toISOString()});
+  }else{
+   await save(id,{status:"failed",stage:"failed",progress:0,message:"Build failed",completedAt:new Date().toISOString(),error:error.message});
+  }
  }finally{
   if(monitor)clearInterval(monitor);
   await fs.rm(workspace,{recursive:true,force:true});
