@@ -12,7 +12,12 @@ services:
     environment:
       REDIS_URL: redis://redis:6379
       ARTIFACT_DIR: /storage
+      UPLOAD_DIR: /uploads
       PORT: 4000
+      CORS_ORIGIN: http://localhost:3000
+      MAX_QUEUED_BUILDS: 3
+      BUILD_RATE_LIMIT: 5
+      STATUS_RATE_LIMIT: 120
     ports:
       - "4000:4000"
     volumes:
@@ -33,6 +38,7 @@ services:
     environment:
       REDIS_URL: redis://redis:6379
       ARTIFACT_DIR: /storage
+      UPLOAD_DIR: /uploads
       BUILDER_SCRIPT: /app/builder/src/build.js
       GIT_CACHE_DIR: /build-cache
       WORKER_CONCURRENCY: 1
@@ -64,3 +70,4 @@ volumes:
   build-artifacts:
   gradle-cache:
   build-cache:
+  build-uploads:
