@@ -1,13 +1,13 @@
 # Android toolchain is supplied by a prebuilt amd64 image. The final runtime
 # deliberately uses Debian so its package manager and Node runtime are stable.
-FROM saschpe/android-ndk:37.2-jdk25.0.4_7-ndk30.0.16248370-cmake4.1.2 AS android
+FROM saschpe/android-ndk:37.2-jdk25.0.4_7-ndk29.0.14206865-cmake3.31.6 AS android
 
 FROM node:22-bookworm
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV ANDROID_HOME=/opt/android-sdk
 ENV ANDROID_SDK_ROOT=/opt/android-sdk
-ENV JAVA_HOME=/opt/java
+ENV JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
 ENV PATH=/opt/gradle/current/bin:/opt/android-sdk/cmdline-tools/latest/bin:/opt/android-sdk/platform-tools:/opt/android-sdk/build-tools/37.0.0:/opt/android-sdk/cmake/3.22.1/bin:/usr/local/bin:$PATH
 
 RUN apt-get update \
