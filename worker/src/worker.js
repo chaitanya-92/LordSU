@@ -7,7 +7,10 @@ import {spawn} from "node:child_process";
 
 const redis=new IORedis(process.env.REDIS_URL||"redis://127.0.0.1:6379",{maxRetriesPerRequest:null});
 const storage=process.env.ARTIFACT_DIR||"/storage";
+const uploadDir=process.env.UPLOAD_DIR||"/uploads";
 const builder=process.env.BUILDER_SCRIPT||"/app/builder/src/build.js";
+const artifactTtlMs=Number(process.env.ARTIFACT_TTL_MS||86400000);
+const cleanupIntervalMs=Number(process.env.CLEANUP_INTERVAL_MS||3600000);
 
 async function save(id,patch){
  const current=await redis.get(`lordsu:build:${id}`);
@@ -15,6 +18,32 @@ async function save(id,patch){
  const next={...job,...patch};
  await redis.set(`lordsu:build:${id}`,JSON.stringify(next),"EX",86400);
  return next;
+}
+
+async function cleanupExpiredArtifacts(){
+ try{
+  const entries=await fs.readdir(storage,{withFileTypes:true});
+  const cutoff=Date.now()-artifactTtlMs;
+  for(const entry of entries){
+   if(!entry.isDirectory())continue;
+   const dir=path.join(storage,entry.name);
+   const stat=await fs.stat(dir).catch(()=>null);
+   if(stat&&stat.mtimeMs<cutoff)await fs.rm(dir,{recursive:true,force:true});
+  }
+ }catch(error){console.error("Artifact cleanup failed:",error.message)}
+}
+
+async function cleanupExpiredUploads(){
+ try{
+  const entries=await fs.readdir(uploadDir,{withFileTypes:true});
+  const cutoff=Date.now()-artifactTtlMs;
+  for(const entry of entries){
+   if(!entry.isFile())continue;
+   const file=path.join(uploadDir,entry.name);
+   const stat=await fs.stat(file).catch(()=>null);
+   if(stat&&stat.mtimeMs<cutoff)await fs.rm(file,{force:true});
+  }
+ }catch(error){console.error("Upload cleanup failed:",error.message)}
 }
 
 function runBuilder(args,cwd,env,id){
@@ -45,7 +74,7 @@ function runBuilder(args,cwd,env,id){
  });
 }
 
-new Worker("lordsu-builds",async job=>{
+const worker=new Worker("lordsu-builds",async job=>{
  const {id,config,iconPath}=job.data;
  const workspace=await fs.mkdtemp(path.join(os.tmpdir(),"lordsu-build-"));
  const configPath=path.join(workspace,"config.json");
@@ -55,6 +84,7 @@ new Worker("lordsu-builds",async job=>{
  await fs.writeFile(configPath,JSON.stringify(buildConfig,null,2));
  await fs.mkdir(outputDir,{recursive:true});
  await fs.mkdir(storage,{recursive:true});
+ await fs.mkdir(uploadDir,{recursive:true});
  let monitor;
  try{
   const existing=await redis.get(`lordsu:build:${id}`);
@@ -92,8 +122,24 @@ new Worker("lordsu-builds",async job=>{
   }
  }finally{
   if(monitor)clearInterval(monitor);
+  if(iconPath)await fs.rm(iconPath,{force:true}).catch(()=>{});
   await fs.rm(workspace,{recursive:true,force:true});
  }
-},{connection:redis,concurrency:Number(process.env.WORKER_CONCURRENCY||1)});
+},{connection:redis,concurrency:Number(process.env.WORKER_CONCURRENCY||1),stalledInterval:30000,maxStalledCount:2});
+
+const cleanupTimer=setInterval(()=>{cleanupExpiredArtifacts();cleanupExpiredUploads()},cleanupIntervalMs);
+cleanupTimer.unref();
+cleanupExpiredArtifacts();
+cleanupExpiredUploads();
+
+async function shutdown(signal){
+ console.log(`Received ${signal}; shutting down`);
+ clearInterval(cleanupTimer);
+ await worker.close().catch(()=>{});
+ await redis.quit().catch(()=>{});
+ process.exit(0);
+}
+process.on("SIGTERM",()=>shutdown("SIGTERM"));
+process.on("SIGINT",()=>shutdown("SIGINT"));
 
 console.log("LordSU worker online");
