@@ -18,6 +18,7 @@ const work=await fs.mkdtemp(path.join(os.tmpdir(),"lordsu-"));
 const source=path.join(work,"source");
 const out=process.env.BUILD_OUTPUT_DIR||path.join(work,"out");
 const progressFile=process.env.PROGRESS_FILE||path.join(work,"progress.json");
+const sourceCommitFile=process.env.SOURCE_COMMIT_FILE||path.join(out,"source-commit.txt");
 const gitCache=process.env.GIT_CACHE_DIR||null;
 await fs.mkdir(out,{recursive:true});
 
@@ -74,6 +75,8 @@ try{
  const backend=BACKENDS[cfg.backend];
  await progress("source",15,`Fetching ${cfg.backend === "kernelsu" ? "KernelSU" : "KernelSU Next"} source`);
  await prepareSource(cfg.backend,backend);
+ const sourceCommit=(await new Promise((resolve,reject)=>{const child=spawn("git",["-C",source,"rev-parse","HEAD"],{stdio:["ignore","pipe","pipe"]});let out="";child.stdout.on("data",d=>out+=d);child.on("error",reject);child.on("close",code=>code===0?resolve(out.trim()):reject(new Error("Unable to resolve source commit")));}))).trim();
+ await fs.writeFile(sourceCommitFile,sourceCommit+"\n");
 
  const manager=path.join(source,"manager");
  const gradle=process.env.GRADLE_BIN||"/opt/gradle/current/bin/gradle";
