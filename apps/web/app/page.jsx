@@ -34,8 +34,8 @@ const formatBytes=bytes=>bytes?`${(bytes/1024/1024).toFixed(2)} MB`:"—";
 const shortHash=value=>value&&value.length>18?`${value.slice(0,10)}…${value.slice(-8)}`:value||"—";
 const conciseError=value=>{
   if(!value)return "The build worker could not complete the build.";
-  const text=String(value).replace(/\\s+/g," ").trim();
-  const marker=text.match(/What went wrong:\s*(.*?)(?:\\s+Try:|\\s+BUILD FAILED|$)/i);
+  const text=String(value).replace(/\s+/g," ").trim();
+  const marker=text.match(/What went wrong:\s*(.*?)(?:\s+Try:|\s+BUILD FAILED|$)/i);
   return (marker?.[1]||text).slice(0,240);
 };
 
