@@ -32,8 +32,10 @@ export default function Home(){
  const [busy,setBusy]=useState(false),[job,setJob]=useState(null),[error,setError]=useState("");
  const [packageEdited,setPackageEdited]=useState(false);
  const [startedAt,setStartedAt]=useState(null),[now,setNow]=useState(Date.now());
- useEffect(()=>{if(!job?.id||["ready","failed"].includes(job.status))return;const poll=async()=>{try{const r=await fetch(API+"/api/builds/"+job.id,{cache:"no-store"});const d=await r.json();if(!r.ok)throw new Error(d.error||"Unable to read build status");setJob(d);if(d.startedAt&&!startedAt)setStartedAt(new Date(d.startedAt).getTime())}catch(e){setError(e.message)}};poll();const t=setInterval(poll,2000);return()=>clearInterval(t)},[job?.id,job?.status]);
- useEffect(()=>{if(!job?.id||["ready","failed"].includes(job.status))return;const t=setInterval(()=>setNow(Date.now()),1000);return()=>clearInterval(t)},[job?.id,job?.status]);
+ const terminalStatuses=["ready","failed","cancelled"];
+ useEffect(()=>{const savedId=window.localStorage.getItem("lordsu.activeBuild");if(!savedId)return;fetch(API+"/api/builds/"+savedId,{cache:"no-store"}).then(async r=>{const d=await r.json();if(!r.ok)throw new Error(d.error||"Unable to restore build");setJob(d);setStartedAt(d.startedAt?new Date(d.startedAt).getTime():null)}).catch(()=>window.localStorage.removeItem("lordsu.activeBuild"))},[]);
+ useEffect(()=>{if(!job?.id||terminalStatuses.includes(job.status))return;const poll=async()=>{try{const r=await fetch(API+"/api/builds/"+job.id,{cache:"no-store"});const d=await r.json();if(!r.ok)throw new Error(d.error||"Unable to read build status");setJob(d);setStartedAt(d.startedAt?new Date(d.startedAt).getTime():null)}catch(e){setError(e.message)}};poll();const t=setInterval(poll,2000);return()=>clearInterval(t)},[job?.id,job?.status]);
+ useEffect(()=>{if(!job?.id||terminalStatuses.includes(job.status))return;const t=setInterval(()=>setNow(Date.now()),1000);return()=>clearInterval(t)},[job?.id,job?.status]);
  const elapsed=useMemo(()=>startedAt?Math.max(0,Math.floor((now-startedAt)/1000)):0,[now,startedAt]);
  const elapsedText=`${Math.floor(elapsed/60)}m ${String(elapsed%60).padStart(2,"0")}s`;
  async function build(e){
@@ -44,7 +46,17 @@ export default function Home(){
    setError(message);setJob({status:"failed",stage:"failed",progress:0,message:"Invalid package name",error:message});setBusy(false);return;
   }
   setJob({status:"queued",progress:0,message:"Waiting for worker"});
-  try{const fd=new FormData();Object.entries({...form,packageName}).forEach(([k,v])=>{if(v!==null)fd.append(k,v)});const r=await fetch(API+"/api/builds",{method:"POST",body:fd});const d=await r.json();if(!r.ok)throw new Error(d.error||"Unable to create build");setJob(d)}catch(e){setJob({status:"failed",stage:"failed",error:e.message});setError(e.message)}finally{setBusy(false)}
+  try{const fd=new FormData();Object.entries({...form,packageName}).forEach(([k,v])=>{if(v!==null)fd.append(k,v)});const r=await fetch(API+"/api/builds",{method:"POST",body:fd});const d=await r.json();if(!r.ok)throw new Error(d.error||"Unable to create build");setJob(d);window.localStorage.setItem("lordsu.activeBuild",d.id)}catch(e){setJob({status:"failed",stage:"failed",error:e.message});setError(e.message)}finally{setBusy(false)}
+ }
+ async function cancelBuild(){
+  if(!job?.id||terminalStatuses.includes(job.status))return;
+  setError("");
+  try{
+   const r=await fetch(API+"/api/builds/"+job.id+"/cancel",{method:"POST"});
+   const d=await r.json();
+   if(!r.ok)throw new Error(d.error||"Unable to cancel build");
+   setJob(prev=>({...prev,...d,message:"Cancelling build…"}));
+  }catch(e){setError(e.message)}
  }
  const current=steps.findIndex(([id])=>id===job?.stage);
  return <main className="min-h-screen bg-[#fafafa] text-zinc-950">
@@ -73,17 +85,17 @@ export default function Home(){
       <Button className="w-full h-11" size="lg" disabled={busy}>{busy?<><Loader2 className="mr-2 animate-spin" size={17}/>Submitting build…</>:<>Build manager <ChevronRight className="ml-2" size={17}/></>}</Button>
      </form>
      {job&&<div className="mt-6 overflow-hidden rounded-2xl border bg-zinc-950 text-white shadow-lg">
-      {job.status!=="failed"&&<div className="p-5">
+      {!["failed","cancelled"].includes(job.status)&&<div className="p-5">
        <div className="flex items-start justify-between gap-4"><div><div className="text-xs text-zinc-400">BUILD PROGRESS</div><div className="mt-1 text-lg font-semibold">{job.message||"Waiting for worker"}</div></div><div className="text-2xl font-semibold tabular-nums">{Math.round(job.progress||0)}%</div></div>
        <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-white transition-all duration-700 ease-out" style={{width:`${Math.max(0,Math.min(100,job.progress||0))}%`}}/><div className="lordsu-shimmer relative -mt-2 h-2 rounded-full" style={{width:`${Math.max(0,Math.min(100,job.progress||0))}%`}}/></div>
        <div className="mt-5 flex items-center gap-2 text-xs text-zinc-400"><Clock3 size={14}/>{elapsedText}<span>·</span><ShieldCheck size={14}/>Isolated worker</div>
       </div>}
       <div className="border-t border-white/10 p-5">
-       <div className="space-y-3">{steps.map(([id,title,desc],i)=>{const done=job.status==="ready"?i<steps.length:i<current;const active=i===current&&job.status!=="ready";return <div key={id} className="flex gap-3"><div className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border ${done?"border-white bg-white text-zinc-950":active?"border-white text-white":"border-white/15 text-white/30"}`}>{done?<Check size={13}/>:active?<Loader2 size={13} className="animate-spin"/>:<Circle size={8}/>}</div><div className="min-w-0"><div className={`text-sm ${active||done?"text-white":"text-white/35"}`}>{title}</div><div className="text-[11px] text-white/35">{desc}</div></div></div>})}</div>
+       <div className="space-y-3">{steps.map(([id,title,desc],i)=>{const done=job.status==="ready"?i<steps.length:i<current;const active=i===current&&!terminalStatuses.includes(job.status);return <div key={id} className="flex gap-3"><div className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border ${done?"border-white bg-white text-zinc-950":active?"border-white text-white":"border-white/15 text-white/30"}`}>{done?<Check size={13}/>:active?<Loader2 size={13} className="animate-spin"/>:<Circle size={8}/>}</div><div className="min-w-0"><div className={`text-sm ${active||done?"text-white":"text-white/35"}`}>{title}</div><div className="text-[11px] text-white/35">{desc}</div></div></div>})}</div>
        {job.status==="ready"&&job.downloadUrl&&<a href={API+job.downloadUrl} className="mt-6 flex h-11 items-center justify-center gap-2 rounded-xl bg-white font-medium text-zinc-950 transition hover:scale-[1.01] hover:bg-zinc-100"><Download size={17}/>Download APK</a>}
       </div>
      </div>}
-     {(job?.status==="failed"||error)&&<div className="mt-5 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-900"><div className="flex items-start gap-3"><AlertCircle className="mt-0.5 shrink-0" size={18}/><div><div className="font-semibold">Build failed</div><p className="mt-1 whitespace-pre-wrap break-words text-xs leading-5">{job?.error||error}</p></div></div></div>}
+     {(job?.status==="failed"||job?.status==="cancelled"||error)&&<div className="mt-5 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-900"><div className="flex items-start gap-3"><AlertCircle className="mt-0.5 shrink-0" size={18}/><div><div className="font-semibold">{job?.status==="cancelled"?"Build cancelled":"Build failed"}</div><p className="mt-1 whitespace-pre-wrap break-words text-xs leading-5">{job?.error||error}</p></div></div></div>}
     </CardContent>
    </Card>
   </div>
