@@ -64,8 +64,14 @@ app.post("/api/builds/:id/cancel",async(req,res)=>{
   if(["ready","failed","cancelled"].includes(job.status))return res.status(409).json({error:`Build is already ${job.status}.`});
   await redis.set(`lordsu:build:${job.id}`,JSON.stringify({...job,cancelRequested:true,status:"cancelling",message:"Cancelling build…"}),"EX",86400);
   const queuedJob=await queue.getJob(job.id);
+  let removed=false;
   if(queuedJob){
-   try{await queuedJob.remove()}catch{}
+   try{await queuedJob.remove();removed=true}catch{}
+  }
+  if(removed){
+   const cancelled={...job,status:"cancelled",stage:"cancelled",progress:0,message:"Build cancelled",completedAt:new Date().toISOString(),cancelRequested:false};
+   await saveJob(cancelled);
+   return res.status(200).json({id:job.id,status:"cancelled",stage:"cancelled",progress:0,message:"Build cancelled"});
   }
   res.status(202).json({id:job.id,status:"cancelling"});
  }catch(error){apiError(error,res)}
