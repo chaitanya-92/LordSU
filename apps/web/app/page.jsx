@@ -97,6 +97,7 @@ export default function Home(){
          <div className="flex justify-between gap-3"><span>APK</span><span className="font-mono text-white">{job.fileName}</span></div>
          {job.size&&<div className="mt-1 flex justify-between gap-3"><span>Size</span><span className="text-white">{(job.size/1024/1024).toFixed(2)} MB</span></div>}
          {job.sha256&&<div className="mt-1"><div className="text-zinc-500">SHA-256</div><div className="mt-1 break-all font-mono text-[10px] text-zinc-300">{job.sha256}</div></div>}
+         {job.sourceCommit&&<div className="mt-1"><div className="text-zinc-500">Source commit</div><div className="mt-1 break-all font-mono text-[10px] text-zinc-300">{job.sourceCommit}</div></div>}
         </div>
         <a href={API+job.downloadUrl} className="mt-3 flex h-11 items-center justify-center gap-2 rounded-xl bg-white font-medium text-zinc-950 transition hover:scale-[1.01] hover:bg-zinc-100"><Download size={17}/>Download APK</a>
        </>}
