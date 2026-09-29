@@ -57,6 +57,20 @@ app.get("/api/builds/:id",async(req,res)=>{
  res.json({...job,downloadUrl:job.status==="ready"?`/api/builds/${job.id}/download`:null});
 });
 
+app.post("/api/builds/:id/cancel",async(req,res)=>{
+ try{
+  const job=await readJob(req.params.id);
+  if(!job)return res.status(404).json({error:"Build not found"});
+  if(["ready","failed","cancelled"].includes(job.status))return res.status(409).json({error:`Build is already ${job.status}.`});
+  await redis.set(`lordsu:build:${job.id}`,JSON.stringify({...job,cancelRequested:true,status:"cancelling",message:"Cancelling build…"}),"EX",86400);
+  const queuedJob=await queue.getJob(job.id);
+  if(queuedJob){
+   try{await queuedJob.remove()}catch{}
+  }
+  res.status(202).json({id:job.id,status:"cancelling"});
+ }catch(error){apiError(error,res)}
+});
+
 app.get("/api/builds/:id/download",async(req,res)=>{
  const job=await readJob(req.params.id);
  if(!job||job.status!=="ready"||!job.artifact)return res.status(404).json({error:"APK is not ready"});
