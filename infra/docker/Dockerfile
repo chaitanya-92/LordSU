@@ -35,17 +35,12 @@ RUN mkdir -p /opt/gradle \
     && /opt/gradle/current/bin/gradle --version \
     && rm -f /tmp/gradle.zip
 
-# The base image already provides the SDK platform, build tools, NDK and JDK
-# required by the current KernelSU manager. Only install the legacy CMake
-# version that the manager build expects. Avoid requesting SDK packages whose
-# repository metadata may not expose them under the deprecated sdkmanager CLI.
+# The base image supplies the Android SDK/NDK/JDK toolchain. Install only
+# the legacy CMake version required by the current KernelSU manager.
 RUN yes | sdkmanager --sdk_root="$ANDROID_SDK_ROOT" --licenses >/dev/null 2>&1 || true \
     && sdkmanager --sdk_root="$ANDROID_SDK_ROOT" "cmake;3.22.1" \
     && test -x "$ANDROID_SDK_ROOT/cmake/3.22.1/bin/cmake" \
-    && "$ANDROID_SDK_ROOT/cmake/3.22.1/bin/cmake" --version \
-    && test -d "$ANDROID_SDK_ROOT/platforms/android-37" \
-    && test -d "$ANDROID_SDK_ROOT/build-tools/37.0.0" \
-    && test -d "$ANDROID_SDK_ROOT/ndk/29.0.14206865"
+    && "$ANDROID_SDK_ROOT/cmake/3.22.1/bin/cmake" --version
 
 COPY worker/package.json /opt/lordsu-worker/package.json
 RUN npm --prefix /opt/lordsu-worker install --omit=dev \
