@@ -1,18 +1,18 @@
-# Android toolchain is supplied by a prebuilt amd64 image. The final runtime
-# deliberately uses Debian so its package manager and Node runtime are stable.
-FROM saschpe/android-ndk:37.2-jdk25.0.4_7-ndk29.0.14206865-cmake3.31.6 AS android
+# Android toolchain stage: Linux amd64 SDK 37 + NDK 29.
+FROM saschpe/android-ndk:37.0-jdk21.0.11_10-ndk29.0.14206865-cmake4.1.2 AS android
 
-FROM node:22-bookworm
+# Debian Bookworm does not ship OpenJDK 21. Use a JDK 21 base for the
+# final runtime and install the small set of worker-side utilities there.
+FROM eclipse-temurin:21-jdk-bookworm
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV ANDROID_HOME=/opt/android-sdk
 ENV ANDROID_SDK_ROOT=/opt/android-sdk
-ENV JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
 ENV PATH=/opt/gradle/current/bin:/opt/android-sdk/cmdline-tools/latest/bin:/opt/android-sdk/platform-tools:/opt/android-sdk/build-tools/37.0.0:/opt/android-sdk/cmake/3.22.1/bin:/usr/local/bin:$PATH
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-       ca-certificates curl git unzip zip python3 python3-pil openjdk-21-jdk bash \
+       ca-certificates curl git unzip zip python3 python3-pil nodejs npm bash \
     && rm -rf /var/lib/apt/lists/* \
     && update-ca-certificates
 
@@ -38,12 +38,15 @@ RUN mkdir -p /opt/gradle \
     && /opt/gradle/current/bin/gradle --version \
     && rm -f /tmp/gradle.zip
 
-# KernelSU's native build currently asks Gradle for CMake 3.22.1.
-# The prebuilt image already supplies the SDK/NDK; install only this missing
-# CMake version instead of downloading the entire Android toolchain.
-RUN sdkmanager --sdk_root="$ANDROID_SDK_ROOT" "cmake;3.22.1" \
+# Accept the SDK license non-interactively, then install exactly the CMake
+# version requested by the current KernelSU manager build.
+RUN yes | sdkmanager --sdk_root="$ANDROID_SDK_ROOT" --licenses >/dev/null 2>&1 || true \
+    && sdkmanager --sdk_root="$ANDROID_SDK_ROOT" "cmake;3.22.1" \
     && test -x /opt/android-sdk/cmake/3.22.1/bin/cmake \
-    && /opt/android-sdk/cmake/3.22.1/bin/cmake --version
+    && /opt/android-sdk/cmake/3.22.1/bin/cmake --version \
+    && test -d /opt/android-sdk/platforms/android-37.0 \
+    && test -d /opt/android-sdk/build-tools/37.0.0 \
+    && test -d /opt/android-sdk/ndk/29.0.14206865
 
 COPY worker/package.json /opt/lordsu-worker/package.json
 RUN npm --prefix /opt/lordsu-worker install --omit=dev \
